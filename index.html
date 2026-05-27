@@ -884,15 +884,29 @@ async function deleteWorkspaceConfirm(wsId, label) {
 
 // ===== Add/Edit Workspace =====
 function openAddWorkspace() {
-  state.editingWorkspaceId = null;
-  document.getElementById('wsEditTitle').textContent = 'Add Workspace';
-  document.getElementById('we_name').value = '';
-  document.getElementById('we_icon').value = '📂';
-  document.getElementById('we_color').value = '#6ebdce';
-  renderWsColorSwatches();
-  setWsColor('#6ebdce');
-  document.getElementById('wsEditModal').style.display = 'flex';
-  setTimeout(() => document.getElementById('we_name').focus(), 100);
+  console.log('[openAddWorkspace] called');
+  try {
+    state.editingWorkspaceId = null;
+    const modal = document.getElementById('wsEditModal');
+    if (!modal) {
+      alert('Bug: wsEditModal not found in DOM. Please screenshot this and tell Claude.');
+      return;
+    }
+    document.getElementById('wsEditTitle').textContent = 'Add Workspace';
+    document.getElementById('we_name').value = '';
+    document.getElementById('we_icon').value = '📂';
+    document.getElementById('we_color').value = '#6ebdce';
+    renderWsColorSwatches();
+    setWsColor('#6ebdce');
+    modal.style.cssText = 'display: flex; z-index: 9999;';
+    setTimeout(() => {
+      const nameInput = document.getElementById('we_name');
+      if (nameInput) nameInput.focus();
+    }, 100);
+  } catch(e) {
+    console.error('[openAddWorkspace] ERROR:', e);
+    alert('Error opening Add Workspace: ' + e.message);
+  }
 }
 
 function editWorkspace(wsId) {
@@ -909,7 +923,8 @@ function editWorkspace(wsId) {
 }
 
 function closeWsEditModal() {
-  document.getElementById('wsEditModal').style.display = 'none';
+  const modal = document.getElementById('wsEditModal');
+  if (modal) modal.style.cssText = 'display: none;';
   state.editingWorkspaceId = null;
 }
 
@@ -1022,19 +1037,36 @@ async function deleteCustomCategory(catId, label) {
 
 // ====== Add/Edit Custom Category ======
 function openAddCategory() {
-  state.editingCategoryId = null;
-  document.getElementById('catEditTitle').textContent = 'Add Category';
-  document.getElementById('ce_name').value = '';
-  document.getElementById('ce_icon').value = '📄';
-  document.getElementById('ce_color').value = '#6ebdce';
-  renderColorSwatches();
-  setColor('#6ebdce');
-  document.getElementById('catEditModal').style.display = 'flex';
-  setTimeout(() => document.getElementById('ce_name').focus(), 100);
+  console.log('[openAddCategory] called');
+  try {
+    state.editingCategoryId = null;
+    const modal = document.getElementById('catEditModal');
+    if (!modal) {
+      alert('Bug: catEditModal not found in DOM. Please screenshot this and tell Claude.');
+      return;
+    }
+    document.getElementById('catEditTitle').textContent = 'Add Category';
+    document.getElementById('ce_name').value = '';
+    document.getElementById('ce_icon').value = '📄';
+    document.getElementById('ce_color').value = '#6ebdce';
+    renderColorSwatches();
+    setColor('#6ebdce');
+    // Force display + z-index to make sure it appears on top
+    modal.style.cssText = 'display: flex; z-index: 9999;';
+    console.log('[openAddCategory] modal opened');
+    setTimeout(() => {
+      const nameInput = document.getElementById('ce_name');
+      if (nameInput) nameInput.focus();
+    }, 100);
+  } catch(e) {
+    console.error('[openAddCategory] ERROR:', e);
+    alert('Error opening Add Category: ' + e.message);
+  }
 }
 
 function closeCatEditModal() {
-  document.getElementById('catEditModal').style.display = 'none';
+  const modal = document.getElementById('catEditModal');
+  if (modal) modal.style.cssText = 'display: none;';
   state.editingCategoryId = null;
 }
 
