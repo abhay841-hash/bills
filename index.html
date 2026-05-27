@@ -141,6 +141,20 @@ input, select, textarea { font-family: inherit; }
 .freq-badge.half_yearly { background: #DBEAFE; color: #1E40AF; }
 .freq-badge.yearly { background: #FCE7F3; color: #9D174D; }
 
+/* PAID DETAILS (shows under bill name when paid) */
+.paid-details { font-size: 11px; color: #047857; margin-top: 4px; line-height: 1.5; }
+.paid-details .pd-pill { display: inline-block; padding: 1px 7px; border-radius: 8px; background: #D1FAE5; color: #047857; font-weight: 600; margin-right: 4px; }
+.paid-details .pd-pill.mode { background: #DBEAFE; color: #1E40AF; }
+.paid-details .pd-pill.ref { background: #F3E8FF; color: #6B21A8; }
+
+/* HISTORY TABLE */
+.history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.history-table th { text-align: left; padding: 8px; background: #F1F5F9; border-bottom: 2px solid #CBD5E1; font-weight: 600; font-size: 12px; color: #475569; }
+.history-table td { padding: 8px; border-bottom: 1px solid #E2E8F0; }
+.history-table tr:last-child td { border-bottom: none; }
+.history-table .amount { font-weight: 600; text-align: right; }
+.btn-history { padding: 6px 8px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 13px; cursor: pointer; }
+
 @media (max-width: 600px) {
   .header h1 { font-size: 17px; }
   .stat-value { font-size: 19px; }
@@ -280,6 +294,73 @@ input, select, textarea { font-family: inherit; }
   </div>
 </div>
 
+<!-- PAYMENT DETAILS MODAL (when marking as paid) -->
+<div id="payModal" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="payModalTitle">Record Payment</h2>
+      <button class="btn-icon" onclick="closePayModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="payBillSummary" style="background:#F1F5F9;padding:10px 12px;border-radius:8px;font-size:13px;"></div>
+      <div class="row-2">
+        <div>
+          <label class="field-label">Amount Paid (₹) *</label>
+          <input id="p_amount" type="number" class="field-input" placeholder="0">
+        </div>
+        <div>
+          <label class="field-label">Payment Date *</label>
+          <input id="p_date" type="date" class="field-input">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Payment Mode *</label>
+        <select id="p_mode" class="field-input">
+          <option value="">-- Select Mode --</option>
+          <option value="UPI">UPI</option>
+          <option value="Auto-debit">Auto-debit</option>
+          <option value="Net Banking">Net Banking</option>
+          <option value="Credit/Debit Card">Credit/Debit Card</option>
+          <option value="Cred">Cred</option>
+          <option value="Savesage">Savesage</option>
+          <option value="Amazon Pay">Amazon Pay</option>
+          <option value="Cash">Cash</option>
+          <option value="Cheque">Cheque</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Reference / Transaction ID (optional)</label>
+        <input id="p_ref" class="field-input" placeholder="UPI ref, cheque no., txn ID...">
+      </div>
+      <div>
+        <label class="field-label">Payment Note (optional, for this month only)</label>
+        <textarea id="p_note" rows="2" class="field-input" placeholder="e.g., Late fee included, cleared via cheque, partial payment..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closePayModal()">Cancel</button>
+      <button class="btn-save" onclick="savePaymentDetails()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT HISTORY MODAL -->
+<div id="historyModal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2 id="historyTitle">Payment History</h2>
+      <button class="btn-icon" onclick="closeHistoryModal()">✕</button>
+    </div>
+    <div class="modal-body" id="historyBody">
+      <div class="loader"><div class="spinner"></div>Loading history...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Load Supabase JS client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -306,10 +387,12 @@ let sb = null;
 let state = {
   bills: [],
   payments: {},
+  allPaymentsByBill: {},  // Map of billId -> array of all payment rows (across months)
   activeTab: 'dashboard',
   filterCategory: 'all',
   selectedMonth: getCurrentMonth(),
   editingBill: null,
+  editingPayBillId: null,
   config: null
 };
 
@@ -534,8 +617,24 @@ async function loadPayments() {
   (data || []).forEach(p => { state.payments[p.bill_id] = p; });
 }
 
+// Load all paid history grouped by bill (for smart defaults + last 3 months display)
+async function loadAllPayments() {
+  const { data, error } = await sb
+    .from('payments')
+    .select('*')
+    .eq('is_paid', true)
+    .order('month_key', { ascending: false })
+    .limit(500);
+  if (error) { console.error('History load error', error); return; }
+  state.allPaymentsByBill = {};
+  (data || []).forEach(p => {
+    if (!state.allPaymentsByBill[p.bill_id]) state.allPaymentsByBill[p.bill_id] = [];
+    state.allPaymentsByBill[p.bill_id].push(p);
+  });
+}
+
 async function loadData() {
-  await Promise.all([loadBills(), loadPayments()]);
+  await Promise.all([loadBills(), loadPayments(), loadAllPayments()]);
   setSync('Synced ✓');
   setTimeout(() => setSync(''), 2000);
   render();
@@ -691,12 +790,138 @@ async function saveBill() {
 async function togglePaid(billId) {
   const pay = state.payments[billId] || {};
   const bill = state.bills.find(b => b.id == billId);
-  const willBePaid = !pay.is_paid;
+  if (!bill) return;
+  // If already paid, ask before unmarking (improvement #8: prevent accidents)
+  if (pay.is_paid) {
+    if (!confirm(`Unmark "${bill.name}" as paid for ${state.selectedMonth}?\n\nThis will clear payment date, mode, and reference.`)) return;
+    await upsertPayment(billId, {
+      is_paid: false,
+      paid_date: null,
+      payment_mode: null,
+      reference_number: null,
+      payment_notes: null
+    });
+    return;
+  }
+  // Open the Payment Details modal
+  openPayModal(bill, pay);
+}
+
+// Open payment modal with smart defaults
+function openPayModal(bill, pay) {
+  state.editingPayBillId = bill.id;
+  document.getElementById('payModalTitle').textContent = `Record Payment — ${bill.name}`;
+  document.getElementById('payBillSummary').innerHTML = `
+    <div style="font-weight:600;margin-bottom:2px;">${escapeHtml(bill.name)}</div>
+    <div style="color:#64748B;font-size:12px;">${escapeHtml(bill.vendor || '')} ${bill.vendor ? '•' : ''} Due day: ${bill.due_day} • Period: ${state.selectedMonth}</div>
+  `;
+  document.getElementById('p_amount').value = pay.amount || bill.typical_amount || '';
+  document.getElementById('p_date').value = new Date().toISOString().split('T')[0];
+  // Smart default: remember last used mode for this bill from any past month
+  const lastMode = findLastPaymentModeForBill(bill.id);
+  document.getElementById('p_mode').value = pay.payment_mode || lastMode || '';
+  document.getElementById('p_ref').value = '';
+  document.getElementById('p_note').value = '';
+  document.getElementById('payModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('p_amount').focus(), 100);
+}
+
+function closePayModal() {
+  document.getElementById('payModal').style.display = 'none';
+  state.editingPayBillId = null;
+}
+
+// Save payment with all details
+async function savePaymentDetails() {
+  const billId = state.editingPayBillId;
+  if (!billId) return;
+  const amount = parseFloat(document.getElementById('p_amount').value);
+  const date = document.getElementById('p_date').value;
+  const mode = document.getElementById('p_mode').value;
+  const ref = document.getElementById('p_ref').value.trim();
+  const note = document.getElementById('p_note').value.trim();
+
+  if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+  if (!date) { alert('Select a payment date'); return; }
+  if (!mode) { alert('Select a payment mode'); return; }
+
   await upsertPayment(billId, {
-    is_paid: willBePaid,
-    paid_date: willBePaid ? new Date().toISOString().split('T')[0] : null,
-    amount: pay.amount || bill.typical_amount || 0
+    is_paid: true,
+    amount: amount,
+    paid_date: date,
+    payment_mode: mode,
+    reference_number: ref || null,
+    payment_notes: note || null
   });
+  closePayModal();
+}
+
+// Find last-used payment mode for a bill (for smart defaults)
+// We do a quick lookup in state.allPayments which we'll populate
+function findLastPaymentModeForBill(billId) {
+  if (!state.allPaymentsByBill || !state.allPaymentsByBill[billId]) return null;
+  const list = state.allPaymentsByBill[billId];
+  if (list.length === 0) return null;
+  // Most recent first; return first one with a mode set
+  for (const p of list) {
+    if (p.payment_mode) return p.payment_mode;
+  }
+  return null;
+}
+
+// ============================================================
+// PAYMENT HISTORY
+// ============================================================
+async function showHistory(billId) {
+  const bill = state.bills.find(b => b.id == billId);
+  if (!bill) return;
+  document.getElementById('historyTitle').textContent = `Payment History — ${bill.name}`;
+  document.getElementById('historyBody').innerHTML = '<div class="loader"><div class="spinner"></div>Loading history...</div>';
+  document.getElementById('historyModal').style.display = 'flex';
+
+  // Fetch all payments for this bill
+  const { data, error } = await sb.from('payments').select('*').eq('bill_id', billId).order('month_key', { ascending: false });
+  if (error) {
+    document.getElementById('historyBody').innerHTML = '<div class="alert alert-error">Failed to load history.</div>';
+    return;
+  }
+  if (!data || data.length === 0) {
+    document.getElementById('historyBody').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><h3>No payment history</h3><p>This bill hasn\'t been paid in any month yet.</p></div>';
+    return;
+  }
+  // Build table
+  let html = '<table class="history-table"><thead><tr><th>Month</th><th>Status</th><th class="amount">Amount</th><th>Paid Date</th><th>Mode</th><th>Reference</th></tr></thead><tbody>';
+  let total = 0;
+  data.forEach(p => {
+    const amt = Number(p.amount || 0);
+    if (p.is_paid) total += amt;
+    html += `<tr>
+      <td><strong>${p.month_key}</strong></td>
+      <td>${p.is_paid ? '<span style="color:#10B981">✓ Paid</span>' : '<span style="color:#94A3B8">—</span>'}${p.tally_entered ? ' <span style="color:#7C3AED;font-size:11px">+Tally</span>' : ''}</td>
+      <td class="amount">${formatINR(amt)}</td>
+      <td>${p.paid_date || '—'}</td>
+      <td>${escapeHtml(p.payment_mode || '—')}</td>
+      <td style="font-size:11px;color:#64748B;">${escapeHtml(p.reference_number || '—')}${p.payment_notes ? '<br><em>' + escapeHtml(p.payment_notes) + '</em>' : ''}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+    <div style="margin-top:14px;padding:10px;background:#F1F5F9;border-radius:8px;font-size:13px;">
+      <strong>Total paid (all months):</strong> ${formatINR(total)} across ${data.filter(p => p.is_paid).length} payment(s)
+    </div>`;
+  document.getElementById('historyBody').innerHTML = html;
+}
+
+function closeHistoryModal() {
+  document.getElementById('historyModal').style.display = 'none';
+}
+
+// Get last N months' amounts for a bill (for improvement #9)
+function getRecentAmounts(billId, count = 3) {
+  if (!state.allPaymentsByBill || !state.allPaymentsByBill[billId]) return [];
+  return state.allPaymentsByBill[billId]
+    .filter(p => p.is_paid && p.month_key !== state.selectedMonth)
+    .slice(0, count)
+    .map(p => ({ month: p.month_key, amount: Number(p.amount || 0) }));
 }
 
 async function toggleTally(billId) {
@@ -716,7 +941,7 @@ function setTab(tab) { state.activeTab = tab; render(); }
 function setFilter(cat) { state.filterCategory = cat; render(); }
 
 function exportCSV() {
-  const rows = [['Bill Name','Category','Frequency','Vendor','Due Day','Amount','Paid','Paid Date','Tally Entered','Notes']];
+  const rows = [['Bill Name','Category','Frequency','Vendor','Due Day','Amount','Paid','Paid Date','Payment Mode','Reference No.','Payment Note','Tally Entered','Bill Notes']];
   billsForSelectedMonth().forEach(b => {
     const p = state.payments[b.id] || {};
     const cat = getCategoryById(b.category);
@@ -725,6 +950,8 @@ function exportCSV() {
       b.vendor || '', b.due_day,
       p.amount || b.typical_amount || 0,
       p.is_paid ? 'Yes' : 'No', p.paid_date || '',
+      p.payment_mode || '', p.reference_number || '',
+      p.payment_notes || '',
       p.tally_entered ? 'Yes' : 'No', b.notes || ''
     ]);
   });
@@ -875,16 +1102,36 @@ function renderBills() {
       : '';
     const freq = bill.frequency || 'monthly';
     const badgeHtml = freq !== 'monthly' ? `<span class="freq-badge ${freq}">${freqLabel(freq)}</span>` : '';
+    // Paid details (improvement #1, #2, #4)
+    let paidDetailsHtml = '';
+    if (isPaid) {
+      const parts = [];
+      if (pay.paid_date) parts.push(`<span class="pd-pill">📅 ${pay.paid_date}</span>`);
+      if (pay.payment_mode) parts.push(`<span class="pd-pill mode">💳 ${escapeHtml(pay.payment_mode)}</span>`);
+      if (pay.reference_number) parts.push(`<span class="pd-pill ref">🔖 ${escapeHtml(pay.reference_number)}</span>`);
+      if (parts.length > 0) {
+        paidDetailsHtml = `<div class="paid-details">${parts.join('')}${pay.payment_notes ? '<div style="margin-top:3px;font-style:italic;color:#64748B;">📝 ' + escapeHtml(pay.payment_notes) + '</div>' : ''}</div>`;
+      }
+    }
+    // Last 3 months snapshot (improvement #9)
+    const recent = getRecentAmounts(bill.id, 3);
+    let recentHtml = '';
+    if (recent.length > 0) {
+      recentHtml = `<div class="bill-meta" style="margin-top:3px;color:#94A3B8;">Prev: ${recent.map(r => MONTH_NAMES_SHORT[parseInt(r.month.split('-')[1])-1] + ' ' + formatINR(r.amount)).join(' · ')}</div>`;
+    }
     html += `
       <div class="bill-row ${isPaid ? 'paid' : isOverdue ? 'overdue' : ''}">
         <div class="cat-icon" style="background:${cat.color}20;">${cat.icon}</div>
         <div class="bill-info">
           <div class="bill-name">${escapeHtml(bill.name)}${badgeHtml}</div>
           <div class="bill-meta">${bill.vendor ? escapeHtml(bill.vendor) + ' • ' : ''}Due: ${bill.due_day} ${dueText ? '• ' + dueText : ''}</div>
+          ${recentHtml}
+          ${paidDetailsHtml}
         </div>
-        <input type="number" class="bill-amount-input" value="${pay.amount || bill.typical_amount || ''}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)">
+        <input type="number" class="bill-amount-input" value="${pay.amount || bill.typical_amount || ''}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)" ${isPaid ? 'disabled style="opacity:0.6"' : ''}>
         <button class="btn-toggle ${isPaid ? 'btn-paid' : 'btn-not-paid'}" onclick="togglePaid(${bill.id})">${isPaid ? '✓ Paid' : 'Mark Paid'}</button>
         <button class="btn-toggle ${pay.tally_entered ? 'btn-tally-done' : 'btn-tally-pending'}" onclick="toggleTally(${bill.id})" ${!isPaid ? 'disabled' : ''}>${pay.tally_entered ? '✓ Tally' : 'Tally'}</button>
+        <button class="btn-history" onclick="showHistory(${bill.id})" title="Payment history">📊</button>
         <button class="btn-icon" onclick='openEditBill(${JSON.stringify(bill).replace(/'/g, "&#39;")})'>✏️</button>
         <button class="btn-icon" onclick="deleteBillRecord(${bill.id})">🗑️</button>
       </div>`;
@@ -945,12 +1192,20 @@ function renderTally() {
     const pay = state.payments[bill.id] || {};
     const tfreq = bill.frequency || 'monthly';
     const tbadge = tfreq !== 'monthly' ? `<span class="freq-badge ${tfreq}">${freqLabel(tfreq)}</span>` : '';
+    // Build details strip for tally view
+    const tparts = [];
+    if (pay.paid_date) tparts.push(`📅 ${pay.paid_date}`);
+    if (pay.payment_mode) tparts.push(`💳 ${escapeHtml(pay.payment_mode)}`);
+    if (pay.reference_number) tparts.push(`🔖 ${escapeHtml(pay.reference_number)}`);
+    const tDetails = tparts.length > 0 ? `<div class="paid-details">${tparts.map(p => '<span class="pd-pill">' + p + '</span>').join('')}</div>` : '';
     html += `
       <div class="bill-row" style="border-color:#FDE68A">
         <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
         <div class="bill-info">
           <div class="bill-name">${escapeHtml(bill.name)}${tbadge}</div>
-          <div class="bill-meta">${formatINR(pay.amount || bill.typical_amount)} • Paid on ${pay.paid_date || '-'}${bill.vendor ? ' • ' + escapeHtml(bill.vendor) : ''}</div>
+          <div class="bill-meta">${formatINR(pay.amount || bill.typical_amount)}${bill.vendor ? ' • ' + escapeHtml(bill.vendor) : ''}</div>
+          ${tDetails}
+          ${pay.payment_notes ? `<div class="bill-meta" style="margin-top:4px;font-style:italic;color:#475569;">📝 ${escapeHtml(pay.payment_notes)}</div>` : ''}
           ${bill.notes ? `<div class="bill-meta" style="margin-top:4px;font-style:italic">${escapeHtml(bill.notes)}</div>` : ''}
         </div>
         <button class="btn-toggle btn-tally-done" onclick="toggleTally(${bill.id})">Mark Tally ✓</button>
