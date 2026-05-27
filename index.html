@@ -763,6 +763,9 @@ function freqLabel(freq) {
 // ============================================================
 const WORKSPACE_COLORS = ['#0891B2','#10B981','#F59E0B','#7C3AED','#EF4444','#EC4899','#06B6D4','#DC2626','#9333EA','#0F766E','#6366F1','#84CC16','#DB2777','#6ebdce','#1a2e1a','#475569','#F97316','#3B82F6'];
 
+// Category color palette (used in Add/Edit Custom Category modal)
+const CATEGORY_COLORS = ['#7C3AED','#F59E0B','#10B981','#3B82F6','#06B6D4','#EF4444','#0EA5E9','#F97316','#EC4899','#6366F1','#0891B2','#DC2626','#9333EA','#0F766E','#7C2D12','#475569','#84CC16','#DB2777','#64748B','#6ebdce','#1a2e1a'];
+
 // Render workspace dropdown selector in header
 function renderWorkspaceSelector() {
   const ws = state.activeWorkspace === 'all'
@@ -988,7 +991,7 @@ function closeCategoryManager() {
 
 function renderCategoryManagerBody() {
   const sorted = [...CATEGORIES].sort((a,b) => (a.sort_order || 999) - (b.sort_order || 999));
-  let html = `<div style="font-size:12px;color:#64748B;margin-bottom:10px;">📌 Pinned = quick-pick buttons in Add Bill • Hidden = not shown anywhere • Custom = ones you created (deletable)</div>`;
+  let html = `<div style="font-size:12px;color:#64748B;margin-bottom:10px;">📌 Pinned = quick-pick buttons in Add Bill • Hidden = not shown anywhere • Delete = permanent removal</div>`;
   html += sorted.map(c => {
     const isHidden = !!c.is_hidden;
     const isPinned = !!c.is_pinned;
@@ -998,12 +1001,12 @@ function renderCategoryManagerBody() {
         <div class="cat-row-info">
           <div class="cat-row-name">${escapeHtml(c.label)}</div>
           <div class="cat-row-meta">
-            ${isPinned ? '📌 Pinned' : '○ Unpinned'} ${isHidden ? '• 🚫 Hidden' : ''} ${c.is_custom ? '• ✨ Custom' : ''}
+            ${isPinned ? '📌 Pinned' : '○ Unpinned'} ${isHidden ? '• 🚫 Hidden' : ''} ${c.is_custom ? '• ✨ Custom' : '• 🏷️ Preset'}
           </div>
         </div>
         <button class="cat-action ${isPinned ? 'unpin' : 'pin'}" onclick="toggleCatPin('${c.id}')">${isPinned ? 'Unpin' : 'Pin'}</button>
         <button class="cat-action ${isHidden ? 'show' : 'hide'}" onclick="toggleCatHidden('${c.id}')">${isHidden ? 'Show' : 'Hide'}</button>
-        ${c.is_custom ? `<button class="cat-action delete" onclick="deleteCustomCategory('${c.id}', '${escapeHtml(c.label)}')">Delete</button>` : ''}
+        <button class="cat-action delete" onclick="deleteCategoryConfirm('${c.id}', '${escapeHtml(c.label)}', ${c.is_custom ? 'true' : 'false'})">Delete</button>
       </div>`;
   }).join('');
   document.getElementById('catModalBody').innerHTML = html;
@@ -1023,16 +1026,24 @@ async function toggleCatHidden(catId) {
   if (ok) renderCategoryManagerBody();
 }
 
-async function deleteCustomCategory(catId, label) {
-  // Check if any bill is using this category
+// Unified delete for ANY category (preset or custom)
+async function deleteCategoryConfirm(catId, label, isCustom) {
   const inUse = state.bills.filter(b => b.category === catId).length;
   if (inUse > 0) {
-    alert(`Cannot delete "${label}" — ${inUse} bill(s) still use this category. Reassign or delete those bills first.`);
+    alert(`Cannot delete "${label}" — ${inUse} bill(s) still use this category.\n\nReassign or delete those bills first, then try again.\n\nTIP: You can "Hide" instead — that keeps the category but removes it from view.`);
     return;
   }
-  if (!confirm(`Delete "${label}" category permanently? This cannot be undone.`)) return;
+  const warningMsg = isCustom
+    ? `Delete "${label}" category permanently?\n\nThis cannot be undone.`
+    : `Delete the preset category "${label}" permanently?\n\nTIP: If you might want it later, "Hide" is reversible. Delete is permanent.\n\nProceed?`;
+  if (!confirm(warningMsg)) return;
   const ok = await deleteCategoryById(catId);
   if (ok) renderCategoryManagerBody();
+}
+
+// Keep old name for backward compatibility
+async function deleteCustomCategory(catId, label) {
+  return deleteCategoryConfirm(catId, label, true);
 }
 
 // ====== Add/Edit Custom Category ======
