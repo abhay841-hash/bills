@@ -84,6 +84,9 @@ input, select, textarea { font-family: inherit; }
 .cat-amount { font-size: 17px; font-weight: 700; }
 .cat-sub { font-size: 11px; color: #64748B; }
 
+/* Larger icon variant for bill rows */
+.cat-icon-lg { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+
 /* FILTER PILLS */
 .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: center; }
 .pill { padding: 6px 11px; border-radius: 18px; border: 1px solid #CBD5E1; background: white; color: #475569; font-size: 12px; font-weight: 600; }
@@ -91,21 +94,46 @@ input, select, textarea { font-family: inherit; }
 .btn-export { margin-left: auto; padding: 7px 13px; border-radius: 8px; border: 1px solid #1a2e1a; background: white; color: #1a2e1a; font-size: 12px; font-weight: 600; }
 
 /* BILL ROWS */
-.bills-list { display: flex; flex-direction: column; gap: 8px; }
-.bill-row { background: white; border-radius: 12px; padding: 12px 14px; border: 1px solid #E2E8F0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.bill-row.paid { border-color: #D1FAE5; background: #F0FDF4; }
-.bill-row.overdue { border-color: #FECACA; }
-.bill-info { flex: 1; min-width: 180px; }
-.bill-name { font-weight: 600; font-size: 14px; }
-.bill-meta { font-size: 11px; color: #64748B; margin-top: 2px; }
-.bill-amount-input { width: 95px; padding: 7px 9px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 14px; text-align: right; }
-.btn-toggle { padding: 7px 11px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; }
-.btn-paid { background: #10B981; color: white; }
-.btn-not-paid { background: #F1F5F9; color: #475569; }
+.bills-list { display: flex; flex-direction: column; gap: 10px; }
+.bill-row { background: white; border-radius: 14px; padding: 14px 16px; border: 1.5px solid #E2E8F0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; transition: border-color 0.15s; }
+.bill-row:hover { border-color: #CBD5E1; }
+.bill-row.paid { border-color: #86EFAC; background: #F0FDF4; }
+.bill-row.overdue { border-color: #FCA5A5; background: #FEF2F2; }
+.bill-info { flex: 1; min-width: 200px; }
+.bill-name { font-weight: 700; font-size: 16px; color: #0F172A; line-height: 1.3; }
+.bill-meta { font-size: 12px; color: #64748B; margin-top: 3px; }
+.bill-prev { font-size: 11px; color: #94A3B8; margin-top: 2px; }
+
+/* DUE-DATE PILL — color-coded by urgency */
+.due-pill { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 6px 10px; border-radius: 10px; border: 1.5px solid; font-weight: 700; line-height: 1.1; }
+.due-pill .due-day { font-size: 18px; }
+.due-pill .due-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.85; margin-bottom: 1px; }
+.due-pill .due-when { font-size: 10px; font-weight: 600; margin-top: 2px; opacity: 0.95; }
+.due-pill.calm { background: #ECFDF5; color: #047857; border-color: #6EE7B7; }
+.due-pill.soon { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
+.due-pill.urgent { background: #FFEDD5; color: #9A3412; border-color: #FDBA74; }
+.due-pill.overdue { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
+.due-pill.paid { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+
+/* AMOUNT — bold prominent */
+.bill-amount-wrap { display: flex; flex-direction: column; align-items: stretch; min-width: 130px; }
+.bill-amount-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #CBD5E1; font-size: 18px; font-weight: 700; text-align: right; color: #0F172A; background: white; }
+.bill-amount-input:focus { outline: none; border-color: #6ebdce; }
+.bill-amount-input:disabled { background: #F1F5F9; opacity: 0.7; }
+.bill-amount-display { padding: 10px 12px; border-radius: 10px; background: #F0FDF4; border: 1.5px solid #86EFAC; font-size: 18px; font-weight: 700; color: #047857; text-align: right; }
+
+/* ACTION BUTTONS */
+.btn-toggle { padding: 9px 14px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; transition: transform 0.1s; }
+.btn-toggle:active { transform: scale(0.96); }
+.btn-paid { background: #10B981; color: white; box-shadow: 0 1px 2px rgba(16,185,129,0.3); }
+.btn-paid:hover { background: #059669; }
+.btn-not-paid { background: #1a2e1a; color: white; }
+.btn-not-paid:hover { background: #0f1e0f; }
 .btn-tally-done { background: #7C3AED; color: white; }
-.btn-tally-pending { background: #F1F5F9; color: #475569; }
-.btn-tally-pending:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-icon { padding: 6px 8px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 13px; }
+.btn-tally-pending { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; }
+.btn-tally-pending:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-icon { padding: 8px 10px; border-radius: 8px; border: 1px solid #E2E8F0; background: white; font-size: 14px; cursor: pointer; }
+.btn-icon:hover { background: #F8FAFC; }
 
 /* EMPTY */
 .empty { text-align: center; padding: 36px 20px; background: white; border-radius: 12px; border: 2px dashed #CBD5E1; }
@@ -510,8 +538,19 @@ function getCurrentMonth() {
 }
 
 function formatINR(amount) {
-  if (!amount) return '₹0';
-  return '₹' + Number(amount).toLocaleString('en-IN');
+  if (amount === null || amount === undefined || amount === '') return '₹0';
+  const n = Number(amount);
+  if (!isFinite(n)) return '₹0';
+  // Indian-style comma formatting, round to whole rupees
+  return '₹\u202F' + Math.round(n).toLocaleString('en-IN');
+}
+
+// Format with decimals if needed (for cases like recent amounts where we want exact)
+function formatINRExact(amount) {
+  if (amount === null || amount === undefined || amount === '') return '₹0';
+  const n = Number(amount);
+  if (!isFinite(n)) return '₹0';
+  return '₹\u202F' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
 function getDaysUntil(dueDay) {
@@ -520,6 +559,13 @@ function getDaysUntil(dueDay) {
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   if (dueDay >= currentDay) return dueDay - currentDay;
   return (daysInMonth - currentDay) + dueDay;
+}
+
+// Returns 'st', 'nd', 'rd', 'th' for a number
+function ordinalSuffix(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
 }
 
 function getCategoryById(id) {
@@ -1409,15 +1455,36 @@ function renderBills() {
     const pay = state.payments[bill.id] || {};
     const days = getDaysUntil(bill.due_day);
     const isPaid = !!pay.is_paid;
-    const isOverdue = !isPaid && state.selectedMonth === getCurrentMonth() && new Date().getDate() > bill.due_day;
-    const dueText = state.selectedMonth === getCurrentMonth() && !isPaid
-      ? (isOverdue ? '<span style="color:#EF4444;font-weight:600">⚠ Overdue</span>'
-        : days === 0 ? '<span style="color:#F59E0B;font-weight:600">Due today</span>'
-        : `<span style="color:${days <= 3 ? '#F59E0B' : '#64748B'}">${days} days</span>`)
-      : '';
+    const isCurrentMonth = state.selectedMonth === getCurrentMonth();
+    const isOverdue = !isPaid && isCurrentMonth && new Date().getDate() > bill.due_day;
+
+    // Smart Due-pill: changes color based on urgency
+    let duePillClass = 'calm';
+    let dueWhen = '';
+    if (isPaid) {
+      duePillClass = 'paid';
+      dueWhen = '✓ Paid';
+    } else if (isCurrentMonth) {
+      if (isOverdue) { duePillClass = 'overdue'; dueWhen = 'Overdue'; }
+      else if (days === 0) { duePillClass = 'urgent'; dueWhen = 'Today'; }
+      else if (days <= 3) { duePillClass = 'urgent'; dueWhen = `In ${days}d`; }
+      else if (days <= 7) { duePillClass = 'soon'; dueWhen = `In ${days}d`; }
+      else { duePillClass = 'calm'; dueWhen = `In ${days}d`; }
+    } else {
+      dueWhen = '';
+    }
+    const dueOrdinal = ordinalSuffix(bill.due_day);
+    const duePillHtml = `
+      <div class="due-pill ${duePillClass}">
+        <span class="due-label">Due</span>
+        <span class="due-day">${bill.due_day}${dueOrdinal}</span>
+        ${dueWhen ? `<span class="due-when">${dueWhen}</span>` : ''}
+      </div>`;
+
     const freq = bill.frequency || 'monthly';
     const badgeHtml = freq !== 'monthly' ? `<span class="freq-badge ${freq}">${freqLabel(freq)}</span>` : '';
-    // Paid details (improvement #1, #2, #4)
+
+    // Paid details
     let paidDetailsHtml = '';
     if (isPaid) {
       const parts = [];
@@ -1428,22 +1495,31 @@ function renderBills() {
         paidDetailsHtml = `<div class="paid-details">${parts.join('')}${pay.payment_notes ? '<div style="margin-top:3px;font-style:italic;color:#64748B;">📝 ' + escapeHtml(pay.payment_notes) + '</div>' : ''}</div>`;
       }
     }
-    // Last 3 months snapshot (improvement #9)
+
+    // Last 3 months snapshot
     const recent = getRecentAmounts(bill.id, 3);
     let recentHtml = '';
     if (recent.length > 0) {
-      recentHtml = `<div class="bill-meta" style="margin-top:3px;color:#94A3B8;">Prev: ${recent.map(r => MONTH_NAMES_SHORT[parseInt(r.month.split('-')[1])-1] + ' ' + formatINR(r.amount)).join(' · ')}</div>`;
+      recentHtml = `<div class="bill-prev">📊 Previous: ${recent.map(r => MONTH_NAMES_SHORT[parseInt(r.month.split('-')[1])-1] + ' ' + formatINR(r.amount)).join(' · ')}</div>`;
     }
+
+    // Amount display: editable input when unpaid, prominent display when paid
+    const amountVal = pay.amount || bill.typical_amount || '';
+    const amountHtml = isPaid
+      ? `<div class="bill-amount-wrap"><div class="bill-amount-display">${formatINR(pay.amount || bill.typical_amount)}</div></div>`
+      : `<div class="bill-amount-wrap"><input type="number" class="bill-amount-input" value="${amountVal}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)"></div>`;
+
     html += `
       <div class="bill-row ${isPaid ? 'paid' : isOverdue ? 'overdue' : ''}">
-        <div class="cat-icon" style="background:${cat.color}20;">${cat.icon}</div>
+        <div class="cat-icon-lg" style="background:${cat.color}20;color:${cat.color};">${cat.icon}</div>
         <div class="bill-info">
           <div class="bill-name">${escapeHtml(bill.name)}${badgeHtml}</div>
-          <div class="bill-meta">${bill.vendor ? escapeHtml(bill.vendor) + ' • ' : ''}Due: ${bill.due_day} ${dueText ? '• ' + dueText : ''}</div>
+          <div class="bill-meta">${bill.vendor ? '🏦 ' + escapeHtml(bill.vendor) : ''}</div>
           ${recentHtml}
           ${paidDetailsHtml}
         </div>
-        <input type="number" class="bill-amount-input" value="${pay.amount || bill.typical_amount || ''}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)" ${isPaid ? 'disabled style="opacity:0.6"' : ''}>
+        ${duePillHtml}
+        ${amountHtml}
         <button class="btn-toggle ${isPaid ? 'btn-paid' : 'btn-not-paid'}" onclick="togglePaid(${bill.id})">${isPaid ? '✓ Paid' : 'Mark Paid'}</button>
         <button class="btn-toggle ${pay.tally_entered ? 'btn-tally-done' : 'btn-tally-pending'}" onclick="toggleTally(${bill.id})" ${!isPaid ? 'disabled' : ''}>${pay.tally_entered ? '✓ Tally' : 'Tally'}</button>
         <button class="btn-history" onclick="showHistory(${bill.id})" title="Payment history">📊</button>
@@ -1466,20 +1542,32 @@ function renderUpcoming() {
     return `<div class="alert alert-success">✅ <div><strong>All clear</strong>Nothing urgent in the next 7 days.</div></div>`;
   }
 
-  let html = `<h3 style="margin-bottom:12px;font-size:15px;">Bills due in next 7 days</h3><div class="bills-list">`;
+  let html = `<h3 style="margin-bottom:14px;font-size:17px;font-weight:700;">⏰ Bills due in next 7 days</h3><div class="bills-list">`;
   upcoming.forEach(bill => {
     const cat = getCategoryById(bill.category);
     const days = getDaysUntil(bill.due_day);
-    const color = days <= 2 ? '#EF4444' : days <= 5 ? '#F59E0B' : '#6ebdce';
     const ufreq = bill.frequency || 'monthly';
     const ubadge = ufreq !== 'monthly' ? `<span class="freq-badge ${ufreq}">${freqLabel(ufreq)}</span>` : '';
+    let pillClass = 'calm';
+    let pillWhen = '';
+    if (days === 0) { pillClass = 'urgent'; pillWhen = 'Today'; }
+    else if (days <= 2) { pillClass = 'urgent'; pillWhen = `In ${days}d`; }
+    else if (days <= 5) { pillClass = 'soon'; pillWhen = `In ${days}d`; }
+    else { pillClass = 'calm'; pillWhen = `In ${days}d`; }
+    const dueOrdU = ordinalSuffix(bill.due_day);
     html += `
-      <div class="bill-row" style="border-left:4px solid ${color}">
-        <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
+      <div class="bill-row">
+        <div class="cat-icon-lg" style="background:${cat.color}20;color:${cat.color};">${cat.icon}</div>
         <div class="bill-info">
           <div class="bill-name">${escapeHtml(bill.name)}${ubadge}</div>
-          <div class="bill-meta">${formatINR(bill.typical_amount)} • Due on ${bill.due_day} • ${days === 0 ? 'Today' : `In ${days} day(s)`}</div>
+          <div class="bill-meta">${bill.vendor ? '🏦 ' + escapeHtml(bill.vendor) : ''}</div>
         </div>
+        <div class="due-pill ${pillClass}">
+          <span class="due-label">Due</span>
+          <span class="due-day">${bill.due_day}${dueOrdU}</span>
+          <span class="due-when">${pillWhen}</span>
+        </div>
+        <div class="bill-amount-wrap"><div class="bill-amount-display" style="background:#F1F5F9;color:#1a2e1a;border-color:#CBD5E1;">${formatINR(bill.typical_amount)}</div></div>
         <button class="btn-toggle btn-paid" onclick="togglePaid(${bill.id})">Mark Paid</button>
       </div>`;
   });
@@ -1514,15 +1602,16 @@ function renderTally() {
     if (pay.reference_number) tparts.push(`🔖 ${escapeHtml(pay.reference_number)}`);
     const tDetails = tparts.length > 0 ? `<div class="paid-details">${tparts.map(p => '<span class="pd-pill">' + p + '</span>').join('')}</div>` : '';
     html += `
-      <div class="bill-row" style="border-color:#FDE68A">
-        <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
+      <div class="bill-row" style="border-color:#FDE68A;background:#FFFBEB;">
+        <div class="cat-icon-lg" style="background:${cat.color}20;color:${cat.color};">${cat.icon}</div>
         <div class="bill-info">
           <div class="bill-name">${escapeHtml(bill.name)}${tbadge}</div>
-          <div class="bill-meta">${formatINR(pay.amount || bill.typical_amount)}${bill.vendor ? ' • ' + escapeHtml(bill.vendor) : ''}</div>
+          <div class="bill-meta">${bill.vendor ? '🏦 ' + escapeHtml(bill.vendor) : ''}</div>
           ${tDetails}
           ${pay.payment_notes ? `<div class="bill-meta" style="margin-top:4px;font-style:italic;color:#475569;">📝 ${escapeHtml(pay.payment_notes)}</div>` : ''}
           ${bill.notes ? `<div class="bill-meta" style="margin-top:4px;font-style:italic">${escapeHtml(bill.notes)}</div>` : ''}
         </div>
+        <div class="bill-amount-wrap"><div class="bill-amount-display">${formatINR(pay.amount || bill.typical_amount)}</div></div>
         <button class="btn-toggle btn-tally-done" onclick="toggleTally(${bill.id})">Mark Tally ✓</button>
       </div>`;
   });
