@@ -1601,6 +1601,21 @@ async function togglePaid(billId) {
     });
     return;
   }
+  // Smart skip: if amount is explicitly 0 (nothing pending), mark paid directly
+  // No need to open payment modal for ₹0 entries
+  const explicitAmount = pay.amount !== undefined && pay.amount !== null ? Number(pay.amount) : null;
+  if (explicitAmount === 0) {
+    if (!confirm(`Mark "${bill.name}" as cleared for ${state.selectedMonth}?\n\n(Amount is ₹0 — nothing was due this month)`)) return;
+    await upsertPayment(billId, {
+      amount: 0,
+      is_paid: true,
+      paid_date: new Date().toISOString().split('T')[0],
+      payment_mode: 'No payment needed',
+      reference_number: null,
+      payment_notes: 'Nothing due this month'
+    });
+    return;
+  }
   // Open the Payment Details modal
   openPayModal(bill, pay);
 }
@@ -1732,7 +1747,18 @@ async function toggleTally(billId) {
 }
 
 async function updateAmount(billId, value) {
-  await upsertPayment(billId, { amount: parseFloat(value) || 0 });
+  // Empty string → save as 0 (explicit "nothing pending")
+  // Otherwise parse as number, default to 0
+  const numValue = value === '' || value === null ? 0 : (parseFloat(value) || 0);
+  await upsertPayment(billId, { amount: numValue });
+}
+
+// Allow editing a "Nothing pending" bill back to a real amount
+async function editZeroAmount(billId) {
+  const newAmt = prompt('Enter the amount due this month:\n(Leave 0 or empty for "nothing pending")');
+  if (newAmt === null) return; // user cancelled
+  const numValue = newAmt === '' ? 0 : (parseFloat(newAmt) || 0);
+  await upsertPayment(billId, { amount: numValue });
 }
 
 function setTab(tab) { state.activeTab = tab; render(); }
@@ -1817,7 +1843,10 @@ function renderDashboard() {
   const activeBills = billsForSelectedMonth();
   const totals = activeBills.reduce((acc, b) => {
     const p = state.payments[b.id] || {};
-    const amt = Number(p.amount || b.typical_amount || 0);
+    // Respect explicit zero: if p.amount is 0 (number), use it. Otherwise fall back.
+    const amt = (p.amount !== undefined && p.amount !== null)
+      ? Number(p.amount)
+      : Number(b.typical_amount || 0);
     acc.due += amt;
     if (p.is_paid) { acc.paid += amt; acc.paidCount++; }
     return acc;
@@ -1886,7 +1915,10 @@ function renderDashboard() {
     if (catBills.length === 0) return;
     const catTotal = catBills.reduce((s, b) => {
       const p = state.payments[b.id] || {};
-      return s + Number(p.amount || b.typical_amount || 0);
+      const amt = (p.amount !== undefined && p.amount !== null)
+        ? Number(p.amount)
+        : Number(b.typical_amount || 0);
+      return s + amt;
     }, 0);
     const catPaid = catBills.filter(b => (state.payments[b.id] || {}).is_paid).length;
     catSummary.push({ cat, catBills, catTotal, catPaid });
@@ -2052,10 +2084,24 @@ function renderBills() {
     }
 
     // Amount display: editable input when unpaid, prominent display when paid
-    const amountVal = pay.amount || bill.typical_amount || '';
-    const amountHtml = isPaid
-      ? `<div class="bill-amount-wrap"><div class="bill-amount-display">${formatINR(pay.amount || bill.typical_amount)}</div></div>`
-      : `<div class="bill-amount-wrap"><input type="number" class="bill-amount-input" value="${amountVal}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)"></div>`;
+    // Zero handling: detect explicit zero amounts (pay.amount === 0 or set to 0)
+    const explicitAmount = pay.amount !== undefined && pay.amount !== null ? Number(pay.amount) : null;
+    const isZero = explicitAmount === 0;
+    const amountVal = explicitAmount !== null ? explicitAmount : (bill.typical_amount || '');
+    let amountHtml;
+    if (isPaid) {
+      amountHtml = `<div class="bill-amount-wrap"><div class="bill-amount-display">${formatINR(pay.amount || bill.typical_amount)}</div></div>`;
+    } else if (isZero) {
+      // Show "Nothing pending" badge cleanly with option to edit
+      amountHtml = `<div class="bill-amount-wrap" style="text-align:center;">
+        <div style="padding:6px 12px;border-radius:10px;background:#ECFDF5;border:1.5px solid #6EE7B7;color:#047857;font-size:13px;font-weight:700;line-height:1.3;">
+          ✓ Nothing<br><span style="font-size:11px;font-weight:600;opacity:0.85;">pending</span>
+        </div>
+        <button onclick="editZeroAmount(${bill.id})" style="margin-top:4px;background:none;border:none;color:#6ebdce;font-size:10px;cursor:pointer;text-decoration:underline;">Edit amount</button>
+      </div>`;
+    } else {
+      amountHtml = `<div class="bill-amount-wrap"><input type="number" class="bill-amount-input" value="${amountVal}" placeholder="₹ or 0 if nothing due" onchange="updateAmount(${bill.id}, this.value)"></div>`;
+    }
 
     html += `
       <div class="bill-row ${isPaid ? 'paid' : isOverdue ? 'overdue' : ''}">
