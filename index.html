@@ -276,7 +276,7 @@ const CATEGORIES = [
   { id: 'other', label: 'Other', icon: '📄', color: '#64748B' }
 ];
 
-let supabase = null;
+let sb = null;
 let state = {
   bills: [],
   payments: {},
@@ -421,13 +421,13 @@ function doLock() {
 // ============================================================
 function initSupabase() {
   if (!state.config) return false;
-  supabase = window.supabase.createClient(state.config.url, state.config.key);
+  sb = window.supabase.createClient(state.config.url, state.config.key);
   return true;
 }
 
 async function loadBills() {
   setSync('Loading...', 'syncing');
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('bills')
     .select('*')
     .eq('is_active', true)
@@ -438,7 +438,7 @@ async function loadBills() {
 }
 
 async function loadPayments() {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('payments')
     .select('*')
     .eq('month_key', state.selectedMonth);
@@ -458,9 +458,9 @@ async function saveBillRecord(billData) {
   setSync('Saving...', 'syncing');
   let res;
   if (state.editingBill) {
-    res = await supabase.from('bills').update(billData).eq('id', state.editingBill.id);
+    res = await sb.from('bills').update(billData).eq('id', state.editingBill.id);
   } else {
-    res = await supabase.from('bills').insert(billData);
+    res = await sb.from('bills').insert(billData);
   }
   if (res.error) { setSync('Save failed', 'error'); alert('Save failed: ' + res.error.message); return false; }
   await loadData();
@@ -470,7 +470,7 @@ async function saveBillRecord(billData) {
 async function deleteBillRecord(id) {
   if (!confirm('Delete this bill? Past payments will be kept in records.')) return;
   setSync('Deleting...', 'syncing');
-  const { error } = await supabase.from('bills').update({ is_active: false }).eq('id', id);
+  const { error } = await sb.from('bills').update({ is_active: false }).eq('id', id);
   if (error) { setSync('Delete failed', 'error'); return; }
   await loadData();
 }
@@ -479,10 +479,10 @@ async function upsertPayment(billId, fields) {
   setSync('Saving...', 'syncing');
   const existing = state.payments[billId];
   if (existing) {
-    const { error } = await supabase.from('payments').update(fields).eq('id', existing.id);
+    const { error } = await sb.from('payments').update(fields).eq('id', existing.id);
     if (error) { setSync('Save failed', 'error'); console.error(error); return; }
   } else {
-    const { error } = await supabase.from('payments').insert({
+    const { error } = await sb.from('payments').insert({
       bill_id: billId,
       month_key: state.selectedMonth,
       ...fields
