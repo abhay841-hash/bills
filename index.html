@@ -393,6 +393,14 @@ function showApp() {
   document.getElementById('configScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
+  // Always ensure Supabase client is initialized before loading data
+  if (!sb) {
+    if (!initSupabase()) {
+      alert('Could not connect to Supabase. Please reset connection settings and re-enter credentials.');
+      showConfig();
+      return;
+    }
+  }
   initApp();
 }
 
