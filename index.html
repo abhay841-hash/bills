@@ -62,11 +62,15 @@ input, select, textarea { font-family: inherit; }
 .main { max-width: 1200px; margin: 0 auto; padding: 18px 14px 80px; }
 
 /* STATS */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
-.stat-card { background: white; border-radius: 12px; padding: 14px; border: 1px solid #E2E8F0; }
-.stat-label { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
-.stat-value { font-size: 21px; font-weight: 700; }
-.stat-sub { font-size: 11px; color: #64748B; margin-top: 3px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 22px; }
+.stat-card { background: white; border-radius: 14px; padding: 16px; border: 1.5px solid #E2E8F0; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+.stat-card:hover { border-color: #6ebdce; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+.stat-card:active { transform: translateY(0); }
+.stat-card::after { content: '›'; position: absolute; top: 14px; right: 14px; font-size: 18px; color: #CBD5E1; transition: color 0.15s; }
+.stat-card:hover::after { color: #6ebdce; }
+.stat-label { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
+.stat-value { font-size: 24px; font-weight: 800; }
+.stat-sub { font-size: 12px; color: #64748B; margin-top: 4px; font-weight: 500; }
 
 /* ALERT */
 .alert { padding: 12px 14px; border-radius: 12px; margin-bottom: 16px; display: flex; gap: 10px; align-items: center; }
@@ -76,13 +80,22 @@ input, select, textarea { font-family: inherit; }
 .alert strong { display: block; margin-bottom: 2px; }
 
 /* CATEGORY CARDS */
-.cat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.cat-card { background: white; border-radius: 12px; padding: 12px; border: 1px solid #E2E8F0; }
-.cat-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.cat-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.cat-name { font-size: 13px; font-weight: 600; }
-.cat-amount { font-size: 17px; font-weight: 700; }
-.cat-sub { font-size: 11px; color: #64748B; }
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.cat-card { background: white; border-radius: 14px; padding: 14px; border: 1.5px solid #E2E8F0; cursor: pointer; transition: all 0.15s; position: relative; }
+.cat-card:hover { border-color: #6ebdce; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+.cat-card:active { transform: translateY(0); }
+.cat-card::after { content: '›'; position: absolute; top: 14px; right: 14px; font-size: 18px; color: #CBD5E1; transition: color 0.15s; }
+.cat-card:hover::after { color: #6ebdce; }
+.cat-card.add-card { border-style: dashed; background: #F8FAFC; }
+.cat-card.add-card:hover { background: #F0FDFA; border-color: #6ebdce; }
+.cat-card.add-card::after { content: ''; }
+.cat-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cat-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.cat-name { font-size: 14px; font-weight: 700; color: #0F172A; }
+.cat-amount { font-size: 20px; font-weight: 800; }
+.cat-sub { font-size: 11px; color: #64748B; margin-top: 2px; font-weight: 500; }
+.cat-progress { height: 4px; background: #E2E8F0; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.cat-progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
 
 /* Larger icon variant for bill rows */
 .cat-icon-lg { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
@@ -522,6 +535,7 @@ let state = {
   allPaymentsByBill: {},  // Map of billId -> array of all payment rows (across months)
   activeTab: 'dashboard',
   filterCategory: 'all',
+  filterPayStatus: 'all',  // 'all' | 'paid' | 'unpaid'
   selectedMonth: getCurrentMonth(),
   editingBill: null,
   editingPayBillId: null,
@@ -1300,6 +1314,11 @@ async function updateAmount(billId, value) {
 
 function setTab(tab) { state.activeTab = tab; render(); }
 function setFilter(cat) { state.filterCategory = cat; render(); }
+function clearFilters() {
+  state.filterCategory = 'all';
+  state.filterPayStatus = 'all';
+  render();
+}
 
 function exportCSV() {
   const rows = [['Bill Name','Category','Frequency','Vendor','Due Day','Amount','Paid','Paid Date','Payment Mode','Reference No.','Payment Note','Tally Entered','Bill Notes']];
@@ -1380,17 +1399,34 @@ function renderDashboard() {
 
   const tallyPending = countTallyPending();
   const remaining = totals.due - totals.paid;
+  const unpaidCount = activeBills.length - totals.paidCount;
 
   let html = `
     <div class="stats">
-      <div class="stat-card"><div class="stat-label">Active This Month</div><div class="stat-value" style="color:#6ebdce">${activeBills.length}</div><div class="stat-sub">${totals.paidCount} paid${state.bills.length !== activeBills.length ? ' (of ' + state.bills.length + ' total)' : ''}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Due</div><div class="stat-value" style="color:#1a2e1a">${formatINR(totals.due)}</div></div>
-      <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" style="color:#10B981">${formatINR(totals.paid)}</div></div>
-      <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${remaining > 0 ? '#EF4444' : '#10B981'}">${formatINR(remaining)}</div></div>
+      <div class="stat-card" onclick="jumpToBills('all','all')" title="View all bills">
+        <div class="stat-label">Active This Month</div>
+        <div class="stat-value" style="color:#6ebdce">${activeBills.length}</div>
+        <div class="stat-sub">${totals.paidCount} paid${state.bills.length !== activeBills.length ? ' • ' + state.bills.length + ' total' : ''}</div>
+      </div>
+      <div class="stat-card" onclick="jumpToBills('all','all')" title="View all bills">
+        <div class="stat-label">Total Due</div>
+        <div class="stat-value" style="color:#1a2e1a">${formatINR(totals.due)}</div>
+        <div class="stat-sub">All bills this month</div>
+      </div>
+      <div class="stat-card" onclick="jumpToBills('all','paid')" title="View only paid bills">
+        <div class="stat-label">Paid</div>
+        <div class="stat-value" style="color:#10B981">${formatINR(totals.paid)}</div>
+        <div class="stat-sub">${totals.paidCount} bill${totals.paidCount !== 1 ? 's' : ''} cleared</div>
+      </div>
+      <div class="stat-card" onclick="jumpToBills('all','unpaid')" title="View only unpaid bills">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value" style="color:${remaining > 0 ? '#EF4444' : '#10B981'}">${formatINR(remaining)}</div>
+        <div class="stat-sub">${unpaidCount} bill${unpaidCount !== 1 ? 's' : ''} pending</div>
+      </div>
     </div>`;
 
   if (tallyPending > 0) {
-    html += `<div class="alert alert-warn">⚠️ <div><strong>${tallyPending} bill(s) paid but not entered in Tally</strong>Switch to "Tally Pending" tab to clear.</div></div>`;
+    html += `<div class="alert alert-warn" onclick="setTab('tally')" style="cursor:pointer;">⚠️ <div><strong>${tallyPending} bill(s) paid but not entered in Tally</strong>Click here to clear them.</div></div>`;
   }
 
   if (state.bills.length === 0) {
@@ -1403,8 +1439,10 @@ function renderDashboard() {
     return html;
   }
 
-  html += `<h3 style="margin:18px 0 10px;font-size:15px;">Category-wise Breakdown</h3><div class="cat-grid">`;
+  // Build category summary, sorted by total spend (biggest first)
+  const catSummary = [];
   CATEGORIES.forEach(cat => {
+    if (cat.is_hidden) return;
     const catBills = activeBills.filter(b => b.category === cat.id);
     if (catBills.length === 0) return;
     const catTotal = catBills.reduce((s, b) => {
@@ -1412,37 +1450,103 @@ function renderDashboard() {
       return s + Number(p.amount || b.typical_amount || 0);
     }, 0);
     const catPaid = catBills.filter(b => (state.payments[b.id] || {}).is_paid).length;
+    catSummary.push({ cat, catBills, catTotal, catPaid });
+  });
+  // Sort by spend, biggest first
+  catSummary.sort((a, b) => b.catTotal - a.catTotal);
+
+  html += `<h3 style="margin:22px 0 12px;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <span>💼 Spending by Category</span>
+    <span style="font-size:11px;color:#94A3B8;font-weight:500;">Tap any card to view bills</span>
+  </h3><div class="cat-grid">`;
+
+  catSummary.forEach(({ cat, catBills, catTotal, catPaid }) => {
+    const pctPaid = catBills.length > 0 ? Math.round((catPaid / catBills.length) * 100) : 0;
     html += `
-      <div class="cat-card">
+      <div class="cat-card" onclick="jumpToBills('${cat.id}','all')">
         <div class="cat-card-header">
           <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
-          <div class="cat-name">${cat.label}</div>
+          <div>
+            <div class="cat-name">${escapeHtml(cat.label)}</div>
+            <div class="cat-sub">${catBills.length} bill${catBills.length !== 1 ? 's' : ''}</div>
+          </div>
         </div>
         <div class="cat-amount" style="color:${cat.color}">${formatINR(catTotal)}</div>
-        <div class="cat-sub">${catPaid} of ${catBills.length} paid</div>
+        <div class="cat-sub">${catPaid} of ${catBills.length} paid (${pctPaid}%)</div>
+        <div class="cat-progress"><div class="cat-progress-fill" style="width:${pctPaid}%;background:${cat.color}"></div></div>
       </div>`;
   });
+
+  // Add a "+ New bill" prompt card at the end
+  html += `
+    <div class="cat-card add-card" onclick="openAddBill()">
+      <div class="cat-card-header">
+        <div class="cat-icon" style="background:#F1F5F9;color:#64748B;font-size:22px;font-weight:300;">+</div>
+        <div>
+          <div class="cat-name" style="color:#475569;">Add new bill</div>
+          <div class="cat-sub">Any category</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#94A3B8;margin-top:8px;line-height:1.4;">Categories like Salaries, Fuel, etc. will appear here automatically once you add bills to them.</div>
+    </div>`;
+
   html += `</div>`;
   return html;
 }
 
+// Jump from dashboard to All Bills tab with filters applied
+function jumpToBills(category, payStatus) {
+  state.filterCategory = category || 'all';
+  state.filterPayStatus = payStatus || 'all';
+  state.activeTab = 'bills';
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function renderBills() {
   const activeBills = billsForSelectedMonth();
-  const filtered = state.filterCategory === 'all' ? activeBills : activeBills.filter(b => b.category === state.filterCategory);
+  // Apply category filter
+  let filtered = state.filterCategory === 'all' ? activeBills : activeBills.filter(b => b.category === state.filterCategory);
+  // Apply pay-status filter
+  if (state.filterPayStatus === 'paid') {
+    filtered = filtered.filter(b => (state.payments[b.id] || {}).is_paid);
+  } else if (state.filterPayStatus === 'unpaid') {
+    filtered = filtered.filter(b => !(state.payments[b.id] || {}).is_paid);
+  }
 
-  let html = `<div class="pills">`;
+  // Show active-filter banner if any filter is on
+  let bannerHtml = '';
+  if (state.filterCategory !== 'all' || state.filterPayStatus !== 'all') {
+    const parts = [];
+    if (state.filterCategory !== 'all') {
+      const c = getCategoryById(state.filterCategory);
+      parts.push(`${c.icon} ${escapeHtml(c.label)}`);
+    }
+    if (state.filterPayStatus === 'paid') parts.push('✓ Paid only');
+    if (state.filterPayStatus === 'unpaid') parts.push('⏳ Unpaid only');
+    bannerHtml = `
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;color:#1E40AF;font-weight:600;">🔍 Filtered: ${parts.join(' · ')}</div>
+        <button onclick="clearFilters()" style="background:white;border:1px solid #BFDBFE;color:#1E40AF;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">✕ Clear filters</button>
+      </div>`;
+  }
+
+  let html = bannerHtml + `<div class="pills">`;
   html += `<button class="pill ${state.filterCategory === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${activeBills.length})</button>`;
   CATEGORIES.forEach(cat => {
     const count = activeBills.filter(b => b.category === cat.id).length;
     if (count === 0) return;
     const isActive = state.filterCategory === cat.id;
-    html += `<button class="pill ${isActive ? 'active' : ''}" style="${isActive ? `background:${cat.color};border-color:${cat.color}` : ''}" onclick="setFilter('${cat.id}')">${cat.icon} ${cat.label} (${count})</button>`;
+    html += `<button class="pill ${isActive ? 'active' : ''}" style="${isActive ? `background:${cat.color};border-color:${cat.color}` : ''}" onclick="setFilter('${cat.id}')">${cat.icon} ${escapeHtml(cat.label)} (${count})</button>`;
   });
   html += `<button class="btn-export" onclick="exportCSV()">📥 Export CSV</button></div>`;
 
   if (filtered.length === 0) {
     if (activeBills.length === 0 && state.bills.length > 0) {
       html += `<div class="empty"><div class="empty-icon">🌴</div><h3>No bills due in ${MONTH_NAMES_SHORT[monthNumFromKey(state.selectedMonth)-1]}</h3><p>Your quarterly/yearly bills don't fall in this month. Change the month picker to see them.</p></div>`;
+    } else if (state.filterPayStatus !== 'all') {
+      const statusLabel = state.filterPayStatus === 'paid' ? 'paid' : 'unpaid';
+      html += `<div class="empty"><div class="empty-icon">${state.filterPayStatus === 'paid' ? '💸' : '🎉'}</div><h3>No ${statusLabel} bills${state.filterCategory !== 'all' ? ' in this category' : ''}</h3><p>${state.filterPayStatus === 'paid' ? 'Nothing has been paid yet this month.' : 'All bills have been paid. Great job!'}</p></div>`;
     } else {
       html += `<div class="empty"><div class="empty-icon">📋</div><h3>No bills</h3><p>Add one to get started.</p></div>`;
     }
