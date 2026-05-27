@@ -182,6 +182,8 @@ input, select, textarea { font-family: inherit; }
 
 /* MODAL */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100; }
+/* Secondary modals (opened from inside other modals) need higher z-index */
+#catEditModal, #wsEditModal, #payModal, #historyModal { z-index: 200; }
 .modal { background: white; border-radius: 16px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
 .modal-header { padding: 16px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
 .modal-header h2 { font-size: 17px; }
@@ -886,8 +888,9 @@ function openAddWorkspace() {
   document.getElementById('wsEditTitle').textContent = 'Add Workspace';
   document.getElementById('we_name').value = '';
   document.getElementById('we_icon').value = '📂';
-  setWsColor('#6ebdce');
+  document.getElementById('we_color').value = '#6ebdce';
   renderWsColorSwatches();
+  setWsColor('#6ebdce');
   document.getElementById('wsEditModal').style.display = 'flex';
   setTimeout(() => document.getElementById('we_name').focus(), 100);
 }
@@ -899,8 +902,9 @@ function editWorkspace(wsId) {
   document.getElementById('wsEditTitle').textContent = 'Edit Workspace';
   document.getElementById('we_name').value = w.label;
   document.getElementById('we_icon').value = w.icon;
-  setWsColor(w.color);
+  document.getElementById('we_color').value = w.color;
   renderWsColorSwatches();
+  setWsColor(w.color);
   document.getElementById('wsEditModal').style.display = 'flex';
 }
 
@@ -1022,8 +1026,9 @@ function openAddCategory() {
   document.getElementById('catEditTitle').textContent = 'Add Category';
   document.getElementById('ce_name').value = '';
   document.getElementById('ce_icon').value = '📄';
-  setColor('#6ebdce');
+  document.getElementById('ce_color').value = '#6ebdce';
   renderColorSwatches();
+  setColor('#6ebdce');
   document.getElementById('catEditModal').style.display = 'flex';
   setTimeout(() => document.getElementById('ce_name').focus(), 100);
 }
