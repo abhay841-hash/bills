@@ -155,6 +155,32 @@ input, select, textarea { font-family: inherit; }
 .history-table .amount { font-weight: 600; text-align: right; }
 .btn-history { padding: 6px 8px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 13px; cursor: pointer; }
 
+/* CATEGORY PINNED BUTTONS (in Add Bill form) */
+.cat-btn { display: flex; align-items: center; gap: 5px; padding: 8px 11px; border-radius: 8px; border: 1.5px solid #E2E8F0; background: white; cursor: pointer; font-size: 13px; font-weight: 600; color: #475569; transition: all 0.15s; }
+.cat-btn:hover { border-color: #6ebdce; }
+.cat-btn.selected { border-color: #1a2e1a; background: #1a2e1a; color: white; }
+.cat-btn-icon { font-size: 16px; }
+
+/* CATEGORY MANAGER ROWS */
+.cat-row { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 6px; background: white; }
+.cat-row.hidden-cat { opacity: 0.5; background: #F8FAFC; }
+.cat-row-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.cat-row-info { flex: 1; }
+.cat-row-name { font-size: 14px; font-weight: 600; }
+.cat-row-meta { font-size: 11px; color: #94A3B8; }
+.cat-action { padding: 5px 10px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 11px; font-weight: 600; cursor: pointer; }
+.cat-action.pin { color: #6ebdce; }
+.cat-action.unpin { color: #94A3B8; }
+.cat-action.hide { color: #F59E0B; }
+.cat-action.show { color: #10B981; }
+.cat-action.delete { color: #EF4444; }
+
+/* EMOJI PICKER & COLOR PICKER */
+.emoji-pick { padding: 5px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 16px; cursor: pointer; }
+.emoji-pick:hover { border-color: #6ebdce; background: #F0FDFA; }
+.color-pick { width: 32px; height: 32px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
+.color-pick.selected { border-color: #1a2e1a; box-shadow: 0 0 0 2px white inset; }
+
 @media (max-width: 600px) {
   .header h1 { font-size: 17px; }
   .stat-value { font-size: 19px; }
@@ -249,8 +275,13 @@ input, select, textarea { font-family: inherit; }
         <input id="f_name" class="field-input" placeholder="e.g., HDFC Credit Card 4521">
       </div>
       <div>
-        <label class="field-label">Category</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <label class="field-label" style="margin-bottom:0;">Category</label>
+          <button type="button" onclick="openCategoryManager()" style="background:none;border:none;color:#6ebdce;font-size:11px;font-weight:600;cursor:pointer;">⚙ Manage</button>
+        </div>
+        <div id="f_category_pinned" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
         <select id="f_category" class="field-input"></select>
+        <input type="hidden" id="f_category_value">
       </div>
       <div>
         <label class="field-label">Vendor / Account (optional)</label>
@@ -361,6 +392,67 @@ input, select, textarea { font-family: inherit; }
   </div>
 </div>
 
+<!-- CATEGORY MANAGER MODAL -->
+<div id="catModal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2>Manage Categories</h2>
+      <button class="btn-icon" onclick="closeCategoryManager()">✕</button>
+    </div>
+    <div class="modal-body" id="catModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="openAddCategory()" style="margin-right:auto;">➕ Add New</button>
+      <button class="btn-cancel" onclick="closeCategoryManager()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT CUSTOM CATEGORY MODAL -->
+<div id="catEditModal" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="catEditTitle">Add Category</h2>
+      <button class="btn-icon" onclick="closeCatEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <label class="field-label">Category Name *</label>
+        <input id="ce_name" class="field-input" placeholder="e.g., Travel, SIP Investment, Books">
+      </div>
+      <div>
+        <label class="field-label">Icon (emoji) *</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="ce_icon" class="field-input" maxlength="4" style="width:80px;font-size:24px;text-align:center;" value="📄">
+          <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1;">
+            <button type="button" class="emoji-pick" onclick="setEmoji('🧳')">🧳</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('✈️')">✈️</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('📚')">📚</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('💰')">💰</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('🏋️')">🏋️</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('🎬')">🎬</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('☕')">☕</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('🐶')">🐶</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('🛒')">🛒</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('🎵')">🎵</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('💊')">💊</button>
+            <button type="button" class="emoji-pick" onclick="setEmoji('🪴')">🪴</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:4px;">Tap an emoji above OR type your own in the box.</div>
+      </div>
+      <div>
+        <label class="field-label">Color *</label>
+        <div id="ce_colors" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <input type="hidden" id="ce_color" value="#6ebdce">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeCatEditModal()">Cancel</button>
+      <button class="btn-save" onclick="saveCategoryEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Load Supabase JS client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -369,19 +461,31 @@ input, select, textarea { font-family: inherit; }
 // BILL TRACKER — NETLIFY + SUPABASE
 // ============================================================
 
-const CATEGORIES = [
-  { id: 'credit_card', label: 'Credit Card', icon: '💳', color: '#7C3AED' },
-  { id: 'electricity', label: 'Electricity', icon: '⚡', color: '#F59E0B' },
-  { id: 'property_tax', label: 'Property Tax', icon: '🏠', color: '#10B981' },
-  { id: 'telephone', label: 'Telephone / Mobile', icon: '📱', color: '#3B82F6' },
-  { id: 'internet', label: 'Internet / Broadband', icon: '🌐', color: '#06B6D4' },
-  { id: 'insurance', label: 'Insurance', icon: '🛡️', color: '#EF4444' },
-  { id: 'water', label: 'Water', icon: '💧', color: '#0EA5E9' },
-  { id: 'gas', label: 'Gas / LPG', icon: '🔥', color: '#F97316' },
-  { id: 'subscription', label: 'Subscriptions', icon: '📺', color: '#EC4899' },
-  { id: 'rent_lease', label: 'Rent / Lease', icon: '🏢', color: '#6366F1' },
-  { id: 'other', label: 'Other', icon: '📄', color: '#64748B' }
+// Default categories — used as fallback if DB isn't reachable
+// Real categories load from Supabase 'categories' table
+const DEFAULT_CATEGORIES = [
+  { id: 'credit_card', label: 'Credit Card', icon: '💳', color: '#7C3AED', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 10 },
+  { id: 'electricity', label: 'Electricity', icon: '⚡', color: '#F59E0B', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 20 },
+  { id: 'property_tax', label: 'Property Tax', icon: '🏠', color: '#10B981', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 30 },
+  { id: 'telephone', label: 'Telephone / Mobile', icon: '📱', color: '#3B82F6', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 40 },
+  { id: 'internet', label: 'Internet / Broadband', icon: '🌐', color: '#06B6D4', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 50 },
+  { id: 'insurance', label: 'Insurance', icon: '🛡️', color: '#EF4444', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 60 },
+  { id: 'water', label: 'Water', icon: '💧', color: '#0EA5E9', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 70 },
+  { id: 'gas', label: 'Gas / LPG', icon: '🔥', color: '#F97316', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 80 },
+  { id: 'subscription', label: 'Subscriptions', icon: '📺', color: '#EC4899', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 90 },
+  { id: 'rent_lease', label: 'Rent / Lease', icon: '🏢', color: '#6366F1', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 100 },
+  { id: 'salaries', label: 'Salaries / Staff', icon: '💼', color: '#0891B2', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 110 },
+  { id: 'medical_supplies', label: 'Medical Supplies', icon: '🏥', color: '#DC2626', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 120 },
+  { id: 'clinic_maintenance', label: 'Clinic Maintenance', icon: '🧹', color: '#9333EA', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 130 },
+  { id: 'professional_fees', label: 'Professional Fees', icon: '📊', color: '#0F766E', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 140 },
+  { id: 'education', label: 'Education / Courses', icon: '🎓', color: '#7C2D12', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 150 },
+  { id: 'vehicle', label: 'Vehicle / Fuel', icon: '🚗', color: '#475569', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 160 },
+  { id: 'food', label: 'Food / Groceries', icon: '🍽️', color: '#84CC16', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 170 },
+  { id: 'gifts', label: 'Gifts / Donations', icon: '🎁', color: '#DB2777', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 180 },
+  { id: 'other', label: 'Other', icon: '📄', color: '#64748B', is_pinned: true, is_hidden: false, is_custom: false, sort_order: 999 }
 ];
+
+let CATEGORIES = [...DEFAULT_CATEGORIES];
 
 let sb = null;
 let state = {
@@ -393,6 +497,7 @@ let state = {
   selectedMonth: getCurrentMonth(),
   editingBill: null,
   editingPayBillId: null,
+  editingCategoryId: null,
   config: null
 };
 
@@ -485,6 +590,135 @@ function freqLabel(freq) {
   if (freq === 'half_yearly') return 'Half-Yearly';
   if (freq === 'yearly') return 'Yearly';
   return '';
+}
+
+// ============================================================
+// CATEGORY MANAGER
+// ============================================================
+const CATEGORY_COLORS = ['#7C3AED','#F59E0B','#10B981','#3B82F6','#06B6D4','#EF4444','#0EA5E9','#F97316','#EC4899','#6366F1','#0891B2','#DC2626','#9333EA','#0F766E','#7C2D12','#475569','#84CC16','#DB2777','#64748B','#6ebdce','#1a2e1a'];
+
+function openCategoryManager() {
+  renderCategoryManagerBody();
+  document.getElementById('catModal').style.display = 'flex';
+}
+
+function closeCategoryManager() {
+  document.getElementById('catModal').style.display = 'none';
+  // Refresh the bill modal picker if it's open
+  const billModalOpen = document.getElementById('billModal').style.display === 'flex';
+  if (billModalOpen) {
+    const currentCat = document.getElementById('f_category_value').value;
+    renderCategoryPicker(currentCat);
+  }
+}
+
+function renderCategoryManagerBody() {
+  const sorted = [...CATEGORIES].sort((a,b) => (a.sort_order || 999) - (b.sort_order || 999));
+  let html = `<div style="font-size:12px;color:#64748B;margin-bottom:10px;">📌 Pinned = quick-pick buttons in Add Bill • Hidden = not shown anywhere • Custom = ones you created (deletable)</div>`;
+  html += sorted.map(c => {
+    const isHidden = !!c.is_hidden;
+    const isPinned = !!c.is_pinned;
+    return `
+      <div class="cat-row ${isHidden ? 'hidden-cat' : ''}">
+        <div class="cat-row-icon" style="background:${c.color}20">${c.icon}</div>
+        <div class="cat-row-info">
+          <div class="cat-row-name">${escapeHtml(c.label)}</div>
+          <div class="cat-row-meta">
+            ${isPinned ? '📌 Pinned' : '○ Unpinned'} ${isHidden ? '• 🚫 Hidden' : ''} ${c.is_custom ? '• ✨ Custom' : ''}
+          </div>
+        </div>
+        <button class="cat-action ${isPinned ? 'unpin' : 'pin'}" onclick="toggleCatPin('${c.id}')">${isPinned ? 'Unpin' : 'Pin'}</button>
+        <button class="cat-action ${isHidden ? 'show' : 'hide'}" onclick="toggleCatHidden('${c.id}')">${isHidden ? 'Show' : 'Hide'}</button>
+        ${c.is_custom ? `<button class="cat-action delete" onclick="deleteCustomCategory('${c.id}', '${escapeHtml(c.label)}')">Delete</button>` : ''}
+      </div>`;
+  }).join('');
+  document.getElementById('catModalBody').innerHTML = html;
+}
+
+async function toggleCatPin(catId) {
+  const c = CATEGORIES.find(x => x.id === catId);
+  if (!c) return;
+  const ok = await upsertCategory({ ...c, is_pinned: !c.is_pinned });
+  if (ok) renderCategoryManagerBody();
+}
+
+async function toggleCatHidden(catId) {
+  const c = CATEGORIES.find(x => x.id === catId);
+  if (!c) return;
+  const ok = await upsertCategory({ ...c, is_hidden: !c.is_hidden });
+  if (ok) renderCategoryManagerBody();
+}
+
+async function deleteCustomCategory(catId, label) {
+  // Check if any bill is using this category
+  const inUse = state.bills.filter(b => b.category === catId).length;
+  if (inUse > 0) {
+    alert(`Cannot delete "${label}" — ${inUse} bill(s) still use this category. Reassign or delete those bills first.`);
+    return;
+  }
+  if (!confirm(`Delete "${label}" category permanently? This cannot be undone.`)) return;
+  const ok = await deleteCategoryById(catId);
+  if (ok) renderCategoryManagerBody();
+}
+
+// ====== Add/Edit Custom Category ======
+function openAddCategory() {
+  state.editingCategoryId = null;
+  document.getElementById('catEditTitle').textContent = 'Add Category';
+  document.getElementById('ce_name').value = '';
+  document.getElementById('ce_icon').value = '📄';
+  setColor('#6ebdce');
+  renderColorSwatches();
+  document.getElementById('catEditModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('ce_name').focus(), 100);
+}
+
+function closeCatEditModal() {
+  document.getElementById('catEditModal').style.display = 'none';
+  state.editingCategoryId = null;
+}
+
+function setEmoji(emoji) {
+  document.getElementById('ce_icon').value = emoji;
+}
+
+function setColor(hex) {
+  document.getElementById('ce_color').value = hex;
+  document.querySelectorAll('#ce_colors .color-pick').forEach(p => p.classList.toggle('selected', p.dataset.color === hex));
+}
+
+function renderColorSwatches() {
+  document.getElementById('ce_colors').innerHTML = CATEGORY_COLORS.map(c =>
+    `<button type="button" class="color-pick ${document.getElementById('ce_color').value === c ? 'selected' : ''}" data-color="${c}" style="background:${c}" onclick="setColor('${c}')"></button>`
+  ).join('');
+}
+
+async function saveCategoryEdit() {
+  const name = document.getElementById('ce_name').value.trim();
+  const icon = document.getElementById('ce_icon').value.trim() || '📄';
+  const color = document.getElementById('ce_color').value || '#6ebdce';
+  if (!name) { alert('Category name is required'); return; }
+  // Generate a clean id: custom_travel
+  const baseId = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30);
+  if (!baseId || baseId === 'custom_') { alert('Please enter a valid name'); return; }
+  // Check duplicates
+  if (CATEGORIES.some(c => c.id === baseId)) { alert('A category with this name already exists. Choose a different name.'); return; }
+  const maxOrder = Math.max(0, ...CATEGORIES.filter(c => c.sort_order && c.sort_order < 990).map(c => c.sort_order));
+  const newCat = {
+    id: baseId,
+    label: name,
+    icon: icon,
+    color: color,
+    is_pinned: true,
+    is_hidden: false,
+    is_custom: true,
+    sort_order: maxOrder + 10
+  };
+  const ok = await upsertCategory(newCat);
+  if (ok) {
+    closeCatEditModal();
+    renderCategoryManagerBody();
+  }
 }
 
 // ============================================================
@@ -634,10 +868,51 @@ async function loadAllPayments() {
 }
 
 async function loadData() {
-  await Promise.all([loadBills(), loadPayments(), loadAllPayments()]);
+  await Promise.all([loadCategories(), loadBills(), loadPayments(), loadAllPayments()]);
   setSync('Synced ✓');
   setTimeout(() => setSync(''), 2000);
   render();
+}
+
+// Load categories from Supabase. Falls back to DEFAULT_CATEGORIES if table missing.
+async function loadCategories() {
+  try {
+    const { data, error } = await sb.from('categories').select('*').order('sort_order', { ascending: true });
+    if (error || !data || data.length === 0) {
+      console.warn('Falling back to default categories:', error);
+      CATEGORIES = [...DEFAULT_CATEGORIES];
+      return;
+    }
+    CATEGORIES = data;
+  } catch (e) {
+    console.warn('loadCategories failed, using defaults:', e);
+    CATEGORIES = [...DEFAULT_CATEGORIES];
+  }
+}
+
+// Category helpers
+function visibleCategories() { return CATEGORIES.filter(c => !c.is_hidden); }
+function pinnedCategories() { return CATEGORIES.filter(c => c.is_pinned && !c.is_hidden); }
+function unpinnedVisibleCategories() { return CATEGORIES.filter(c => !c.is_pinned && !c.is_hidden); }
+
+async function upsertCategory(cat) {
+  setSync('Saving category...', 'syncing');
+  const { error } = await sb.from('categories').upsert(cat);
+  if (error) { setSync('Save failed', 'error'); console.error(error); alert('Failed: ' + error.message); return false; }
+  await loadCategories();
+  setSync('Synced ✓');
+  setTimeout(() => setSync(''), 1200);
+  return true;
+}
+
+async function deleteCategoryById(catId) {
+  setSync('Deleting...', 'syncing');
+  const { error } = await sb.from('categories').delete().eq('id', catId);
+  if (error) { setSync('Delete failed', 'error'); alert('Failed: ' + error.message); return false; }
+  await loadCategories();
+  setSync('Synced ✓');
+  setTimeout(() => setSync(''), 1200);
+  return true;
 }
 
 async function saveBillRecord(billData) {
@@ -689,7 +964,9 @@ function openAddBill() {
   document.getElementById('modalTitle').textContent = 'Add New Bill';
   ['f_name','f_vendor','f_amount','f_notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f_dueDay').value = '1';
-  document.getElementById('f_category').value = 'credit_card';
+  // Set default category to first visible
+  const first = visibleCategories()[0] || CATEGORIES[0];
+  renderCategoryPicker(first ? first.id : 'other');
   document.getElementById('f_frequency').value = 'monthly';
   renderMonthsGrid(defaultActiveMonths('monthly'));
   onFrequencyChange();
@@ -705,7 +982,7 @@ function openEditBill(bill) {
   document.getElementById('f_dueDay').value = bill.due_day;
   document.getElementById('f_amount').value = bill.typical_amount;
   document.getElementById('f_notes').value = bill.notes || '';
-  document.getElementById('f_category').value = bill.category;
+  renderCategoryPicker(bill.category);
   document.getElementById('f_frequency').value = bill.frequency || 'monthly';
   let am = bill.active_months;
   if (typeof am === 'string') { try { am = JSON.parse(am); } catch(e) { am = null; } }
@@ -713,6 +990,44 @@ function openEditBill(bill) {
   renderMonthsGrid(am);
   onFrequencyChange();
   document.getElementById('billModal').style.display = 'flex';
+}
+
+// Render pinned category buttons + dropdown for unpinned/all
+function renderCategoryPicker(selectedId) {
+  const pinned = pinnedCategories();
+  const others = unpinnedVisibleCategories();
+  // Pinned buttons
+  const pinnedHtml = pinned.map(c =>
+    `<button type="button" class="cat-btn ${selectedId === c.id ? 'selected' : ''}" data-cat="${c.id}" onclick="selectCategory('${c.id}')">
+      <span class="cat-btn-icon">${c.icon}</span><span>${escapeHtml(c.label)}</span>
+    </button>`
+  ).join('');
+  document.getElementById('f_category_pinned').innerHTML = pinnedHtml || '<div style="font-size:12px;color:#94A3B8;">No categories pinned. Tap ⚙ Manage to pin some.</div>';
+
+  // Dropdown — show ALL visible categories (pinned + unpinned) for safety, plus "Other" fallback
+  const allOpts = visibleCategories();
+  const dropdown = document.getElementById('f_category');
+  if (others.length > 0) {
+    dropdown.style.display = 'block';
+    dropdown.innerHTML = '<option value="">— Or pick from full list —</option>' +
+      allOpts.map(c => `<option value="${c.id}" ${selectedId === c.id ? 'selected' : ''}>${c.icon} ${escapeHtml(c.label)}</option>`).join('');
+    dropdown.onchange = (e) => { if (e.target.value) selectCategory(e.target.value); };
+  } else {
+    // All categories are pinned — hide the dropdown
+    dropdown.style.display = 'none';
+  }
+  document.getElementById('f_category_value').value = selectedId;
+}
+
+function selectCategory(catId) {
+  document.getElementById('f_category_value').value = catId;
+  // Refresh button highlight
+  document.querySelectorAll('#f_category_pinned .cat-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.cat === catId);
+  });
+  // Sync dropdown
+  const dd = document.getElementById('f_category');
+  if (dd && dd.style.display !== 'none') dd.value = catId;
 }
 
 // Called when frequency dropdown changes
@@ -776,7 +1091,7 @@ async function saveBill() {
   selectedMonths.sort((a, b) => a - b);
   const ok = await saveBillRecord({
     name,
-    category: document.getElementById('f_category').value,
+    category: document.getElementById('f_category_value').value || 'other',
     vendor: document.getElementById('f_vendor').value.trim() || null,
     due_day: parseInt(document.getElementById('f_dueDay').value) || 1,
     typical_amount: parseFloat(document.getElementById('f_amount').value) || 0,
@@ -1219,9 +1534,7 @@ function renderTally() {
 // INIT
 // ============================================================
 function initApp() {
-  document.getElementById('f_category').innerHTML = CATEGORIES.map(c =>
-    `<option value="${c.id}">${c.icon} ${c.label}</option>`
-  ).join('');
+  // Note: f_category is now populated dynamically by renderCategoryPicker when modal opens
 
   const mp = document.getElementById('monthPicker');
   mp.value = state.selectedMonth;
