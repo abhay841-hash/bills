@@ -131,6 +131,16 @@ input, select, textarea { font-family: inherit; }
 .spinner { width: 22px; height: 22px; border: 3px solid #E2E8F0; border-top-color: #6ebdce; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* MONTH PILLS (for frequency selector) */
+.month-pill { padding: 7px 4px; border-radius: 6px; border: 1px solid #CBD5E1; background: white; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; text-align: center; user-select: none; }
+.month-pill.selected { background: #6ebdce; border-color: #6ebdce; color: white; }
+
+/* FREQUENCY BADGE on bill rows */
+.freq-badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 4px; vertical-align: middle; }
+.freq-badge.quarterly { background: #FEF3C7; color: #92400E; }
+.freq-badge.half_yearly { background: #DBEAFE; color: #1E40AF; }
+.freq-badge.yearly { background: #FCE7F3; color: #9D174D; }
+
 @media (max-width: 600px) {
   .header h1 { font-size: 17px; }
   .stat-value { font-size: 19px; }
@@ -243,6 +253,22 @@ input, select, textarea { font-family: inherit; }
         </div>
       </div>
       <div>
+        <label class="field-label">Frequency</label>
+        <select id="f_frequency" class="field-input" onchange="onFrequencyChange()">
+          <option value="monthly">📅 Monthly (every month)</option>
+          <option value="quarterly">📆 Quarterly (every 3 months)</option>
+          <option value="half_yearly">🗓️ Half-Yearly (every 6 months)</option>
+          <option value="yearly">📌 Yearly (once a year)</option>
+        </select>
+      </div>
+      <div id="f_months_wrapper" style="display:none;">
+        <label class="field-label">Active months (tick the months when this bill is due)</label>
+        <div id="f_months_grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px;">
+          <!-- Filled by JS -->
+        </div>
+        <div id="f_months_hint" style="font-size:11px;color:#64748B;margin-top:6px;"></div>
+      </div>
+      <div>
         <label class="field-label">Notes (Tally ledger, biller URL...)</label>
         <textarea id="f_notes" rows="2" class="field-input" placeholder="Ledger: Electricity Expense | Auto-debit HDFC Sav"></textarea>
       </div>
@@ -323,6 +349,59 @@ function setSync(text, type = '') {
     el.textContent = text ? ' · ' + text : '';
     el.className = 'sync-status ' + type;
   }
+}
+
+// ============================================================
+// FREQUENCY HELPERS
+// ============================================================
+const MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Default active months for each frequency
+function defaultActiveMonths(freq) {
+  if (freq === 'monthly') return [1,2,3,4,5,6,7,8,9,10,11,12];
+  if (freq === 'quarterly') return [1,4,7,10]; // Jan/Apr/Jul/Oct
+  if (freq === 'half_yearly') return [4,10]; // Apr/Oct
+  if (freq === 'yearly') return [4]; // Apr
+  return [1,2,3,4,5,6,7,8,9,10,11,12];
+}
+
+// Allowed count of selected months for each frequency
+function expectedMonthCount(freq) {
+  if (freq === 'monthly') return 12;
+  if (freq === 'quarterly') return 4;
+  if (freq === 'half_yearly') return 2;
+  if (freq === 'yearly') return 1;
+  return 12;
+}
+
+// Check if a bill is active in a given month (1-12)
+function isBillActiveInMonth(bill, monthNum) {
+  let am = bill.active_months;
+  if (!am) return true;
+  if (typeof am === 'string') {
+    try { am = JSON.parse(am); } catch (e) { return true; }
+  }
+  if (!Array.isArray(am) || am.length === 0) return true;
+  return am.includes(monthNum);
+}
+
+// Get month number (1-12) from "YYYY-MM" key
+function monthNumFromKey(key) {
+  return parseInt(key.split('-')[1]);
+}
+
+// Get bills active in the currently-selected month (based on frequency)
+function billsForSelectedMonth() {
+  const monthNum = monthNumFromKey(state.selectedMonth);
+  return state.bills.filter(b => isBillActiveInMonth(b, monthNum));
+}
+
+// Format frequency for display
+function freqLabel(freq) {
+  if (freq === 'quarterly') return 'Quarterly';
+  if (freq === 'half_yearly') return 'Half-Yearly';
+  if (freq === 'yearly') return 'Yearly';
+  return '';
 }
 
 // ============================================================
@@ -512,6 +591,9 @@ function openAddBill() {
   ['f_name','f_vendor','f_amount','f_notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f_dueDay').value = '1';
   document.getElementById('f_category').value = 'credit_card';
+  document.getElementById('f_frequency').value = 'monthly';
+  renderMonthsGrid(defaultActiveMonths('monthly'));
+  onFrequencyChange();
   document.getElementById('billModal').style.display = 'flex';
   setTimeout(() => document.getElementById('f_name').focus(), 100);
 }
@@ -525,7 +607,56 @@ function openEditBill(bill) {
   document.getElementById('f_amount').value = bill.typical_amount;
   document.getElementById('f_notes').value = bill.notes || '';
   document.getElementById('f_category').value = bill.category;
+  document.getElementById('f_frequency').value = bill.frequency || 'monthly';
+  let am = bill.active_months;
+  if (typeof am === 'string') { try { am = JSON.parse(am); } catch(e) { am = null; } }
+  if (!am || !Array.isArray(am)) am = defaultActiveMonths(bill.frequency || 'monthly');
+  renderMonthsGrid(am);
+  onFrequencyChange();
   document.getElementById('billModal').style.display = 'flex';
+}
+
+// Called when frequency dropdown changes
+function onFrequencyChange() {
+  const freq = document.getElementById('f_frequency').value;
+  const wrapper = document.getElementById('f_months_wrapper');
+  const hint = document.getElementById('f_months_hint');
+  if (freq === 'monthly') {
+    wrapper.style.display = 'none';
+    renderMonthsGrid([1,2,3,4,5,6,7,8,9,10,11,12]);
+  } else {
+    wrapper.style.display = 'block';
+    const expected = expectedMonthCount(freq);
+    hint.textContent = `Select exactly ${expected} month${expected > 1 ? 's' : ''} when this bill is due.`;
+    // If currently-selected count doesn't match expected, reset to defaults for this freq
+    const currentlySelected = getSelectedMonths();
+    if (currentlySelected.length !== expected) {
+      renderMonthsGrid(defaultActiveMonths(freq));
+    }
+  }
+}
+
+// Render the 12-month grid with current selection
+function renderMonthsGrid(selected) {
+  const grid = document.getElementById('f_months_grid');
+  grid.innerHTML = MONTH_NAMES_SHORT.map((m, i) => {
+    const monthNum = i + 1;
+    const isOn = selected.includes(monthNum);
+    return `<div class="month-pill ${isOn ? 'selected' : ''}" data-month="${monthNum}" onclick="toggleMonth(${monthNum})">${m}</div>`;
+  }).join('');
+}
+
+// Toggle a month on/off
+function toggleMonth(monthNum) {
+  const freq = document.getElementById('f_frequency').value;
+  if (freq === 'monthly') return; // ignore — monthly is always all 12
+  const pill = document.querySelector(`.month-pill[data-month="${monthNum}"]`);
+  if (pill) pill.classList.toggle('selected');
+}
+
+// Get array of currently-selected month numbers
+function getSelectedMonths() {
+  return [...document.querySelectorAll('.month-pill.selected')].map(p => parseInt(p.dataset.month));
 }
 
 function closeBillModal() {
@@ -536,13 +667,23 @@ function closeBillModal() {
 async function saveBill() {
   const name = document.getElementById('f_name').value.trim();
   if (!name) { alert('Bill name is required'); return; }
+  const freq = document.getElementById('f_frequency').value;
+  const expectedCount = expectedMonthCount(freq);
+  const selectedMonths = getSelectedMonths();
+  if (selectedMonths.length !== expectedCount) {
+    alert(`For ${freqLabel(freq) || 'Monthly'} bills, please select exactly ${expectedCount} month${expectedCount > 1 ? 's' : ''}.`);
+    return;
+  }
+  selectedMonths.sort((a, b) => a - b);
   const ok = await saveBillRecord({
     name,
     category: document.getElementById('f_category').value,
     vendor: document.getElementById('f_vendor').value.trim() || null,
     due_day: parseInt(document.getElementById('f_dueDay').value) || 1,
     typical_amount: parseFloat(document.getElementById('f_amount').value) || 0,
-    notes: document.getElementById('f_notes').value.trim() || null
+    notes: document.getElementById('f_notes').value.trim() || null,
+    frequency: freq,
+    active_months: selectedMonths
   });
   if (ok) closeBillModal();
 }
@@ -575,12 +716,13 @@ function setTab(tab) { state.activeTab = tab; render(); }
 function setFilter(cat) { state.filterCategory = cat; render(); }
 
 function exportCSV() {
-  const rows = [['Bill Name','Category','Vendor','Due Day','Amount','Paid','Paid Date','Tally Entered','Notes']];
-  state.bills.forEach(b => {
+  const rows = [['Bill Name','Category','Frequency','Vendor','Due Day','Amount','Paid','Paid Date','Tally Entered','Notes']];
+  billsForSelectedMonth().forEach(b => {
     const p = state.payments[b.id] || {};
     const cat = getCategoryById(b.category);
     rows.push([
-      b.name, cat.label, b.vendor || '', b.due_day,
+      b.name, cat.label, (b.frequency || 'monthly'),
+      b.vendor || '', b.due_day,
       p.amount || b.typical_amount || 0,
       p.is_paid ? 'Yes' : 'No', p.paid_date || '',
       p.tally_entered ? 'Yes' : 'No', b.notes || ''
@@ -624,7 +766,7 @@ function renderTabs() {
 
 function countUpcoming() {
   if (state.selectedMonth !== getCurrentMonth()) return 0;
-  return state.bills.filter(b => {
+  return billsForSelectedMonth().filter(b => {
     const p = state.payments[b.id] || {};
     if (p.is_paid) return false;
     return getDaysUntil(b.due_day) <= 7;
@@ -632,14 +774,15 @@ function countUpcoming() {
 }
 
 function countTallyPending() {
-  return state.bills.filter(b => {
+  return billsForSelectedMonth().filter(b => {
     const p = state.payments[b.id] || {};
     return p.is_paid && !p.tally_entered;
   }).length;
 }
 
 function renderDashboard() {
-  const totals = state.bills.reduce((acc, b) => {
+  const activeBills = billsForSelectedMonth();
+  const totals = activeBills.reduce((acc, b) => {
     const p = state.payments[b.id] || {};
     const amt = Number(p.amount || b.typical_amount || 0);
     acc.due += amt;
@@ -652,7 +795,7 @@ function renderDashboard() {
 
   let html = `
     <div class="stats">
-      <div class="stat-card"><div class="stat-label">Total Bills</div><div class="stat-value" style="color:#6ebdce">${state.bills.length}</div><div class="stat-sub">${totals.paidCount} paid</div></div>
+      <div class="stat-card"><div class="stat-label">Active This Month</div><div class="stat-value" style="color:#6ebdce">${activeBills.length}</div><div class="stat-sub">${totals.paidCount} paid${state.bills.length !== activeBills.length ? ' (of ' + state.bills.length + ' total)' : ''}</div></div>
       <div class="stat-card"><div class="stat-label">Total Due</div><div class="stat-value" style="color:#1a2e1a">${formatINR(totals.due)}</div></div>
       <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" style="color:#10B981">${formatINR(totals.paid)}</div></div>
       <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${remaining > 0 ? '#EF4444' : '#10B981'}">${formatINR(remaining)}</div></div>
@@ -667,9 +810,14 @@ function renderDashboard() {
     return html;
   }
 
+  if (activeBills.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">🌴</div><h3>No bills active this month</h3><p>None of your quarterly/yearly bills fall in ${MONTH_NAMES_SHORT[monthNumFromKey(state.selectedMonth)-1]}. Enjoy the break!</p></div>`;
+    return html;
+  }
+
   html += `<h3 style="margin:18px 0 10px;font-size:15px;">Category-wise Breakdown</h3><div class="cat-grid">`;
   CATEGORIES.forEach(cat => {
-    const catBills = state.bills.filter(b => b.category === cat.id);
+    const catBills = activeBills.filter(b => b.category === cat.id);
     if (catBills.length === 0) return;
     const catTotal = catBills.reduce((s, b) => {
       const p = state.payments[b.id] || {};
@@ -691,12 +839,13 @@ function renderDashboard() {
 }
 
 function renderBills() {
-  const filtered = state.filterCategory === 'all' ? state.bills : state.bills.filter(b => b.category === state.filterCategory);
+  const activeBills = billsForSelectedMonth();
+  const filtered = state.filterCategory === 'all' ? activeBills : activeBills.filter(b => b.category === state.filterCategory);
 
   let html = `<div class="pills">`;
-  html += `<button class="pill ${state.filterCategory === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${state.bills.length})</button>`;
+  html += `<button class="pill ${state.filterCategory === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${activeBills.length})</button>`;
   CATEGORIES.forEach(cat => {
-    const count = state.bills.filter(b => b.category === cat.id).length;
+    const count = activeBills.filter(b => b.category === cat.id).length;
     if (count === 0) return;
     const isActive = state.filterCategory === cat.id;
     html += `<button class="pill ${isActive ? 'active' : ''}" style="${isActive ? `background:${cat.color};border-color:${cat.color}` : ''}" onclick="setFilter('${cat.id}')">${cat.icon} ${cat.label} (${count})</button>`;
@@ -704,7 +853,11 @@ function renderBills() {
   html += `<button class="btn-export" onclick="exportCSV()">📥 Export CSV</button></div>`;
 
   if (filtered.length === 0) {
-    html += `<div class="empty"><div class="empty-icon">📋</div><h3>No bills</h3><p>Add one to get started.</p></div>`;
+    if (activeBills.length === 0 && state.bills.length > 0) {
+      html += `<div class="empty"><div class="empty-icon">🌴</div><h3>No bills due in ${MONTH_NAMES_SHORT[monthNumFromKey(state.selectedMonth)-1]}</h3><p>Your quarterly/yearly bills don't fall in this month. Change the month picker to see them.</p></div>`;
+    } else {
+      html += `<div class="empty"><div class="empty-icon">📋</div><h3>No bills</h3><p>Add one to get started.</p></div>`;
+    }
     return html;
   }
 
@@ -720,11 +873,13 @@ function renderBills() {
         : days === 0 ? '<span style="color:#F59E0B;font-weight:600">Due today</span>'
         : `<span style="color:${days <= 3 ? '#F59E0B' : '#64748B'}">${days} days</span>`)
       : '';
+    const freq = bill.frequency || 'monthly';
+    const badgeHtml = freq !== 'monthly' ? `<span class="freq-badge ${freq}">${freqLabel(freq)}</span>` : '';
     html += `
       <div class="bill-row ${isPaid ? 'paid' : isOverdue ? 'overdue' : ''}">
         <div class="cat-icon" style="background:${cat.color}20;">${cat.icon}</div>
         <div class="bill-info">
-          <div class="bill-name">${escapeHtml(bill.name)}</div>
+          <div class="bill-name">${escapeHtml(bill.name)}${badgeHtml}</div>
           <div class="bill-meta">${bill.vendor ? escapeHtml(bill.vendor) + ' • ' : ''}Due: ${bill.due_day} ${dueText ? '• ' + dueText : ''}</div>
         </div>
         <input type="number" class="bill-amount-input" value="${pay.amount || bill.typical_amount || ''}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)">
@@ -739,7 +894,7 @@ function renderBills() {
 }
 
 function renderUpcoming() {
-  const upcoming = state.bills.filter(b => {
+  const upcoming = billsForSelectedMonth().filter(b => {
     const p = state.payments[b.id] || {};
     if (p.is_paid) return false;
     return state.selectedMonth === getCurrentMonth() && getDaysUntil(b.due_day) <= 7;
@@ -754,11 +909,13 @@ function renderUpcoming() {
     const cat = getCategoryById(bill.category);
     const days = getDaysUntil(bill.due_day);
     const color = days <= 2 ? '#EF4444' : days <= 5 ? '#F59E0B' : '#6ebdce';
+    const ufreq = bill.frequency || 'monthly';
+    const ubadge = ufreq !== 'monthly' ? `<span class="freq-badge ${ufreq}">${freqLabel(ufreq)}</span>` : '';
     html += `
       <div class="bill-row" style="border-left:4px solid ${color}">
         <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
         <div class="bill-info">
-          <div class="bill-name">${escapeHtml(bill.name)}</div>
+          <div class="bill-name">${escapeHtml(bill.name)}${ubadge}</div>
           <div class="bill-meta">${formatINR(bill.typical_amount)} • Due on ${bill.due_day} • ${days === 0 ? 'Today' : `In ${days} day(s)`}</div>
         </div>
         <button class="btn-toggle btn-paid" onclick="togglePaid(${bill.id})">Mark Paid</button>
@@ -769,7 +926,7 @@ function renderUpcoming() {
 }
 
 function renderTally() {
-  const pending = state.bills.filter(b => {
+  const pending = billsForSelectedMonth().filter(b => {
     const p = state.payments[b.id] || {};
     return p.is_paid && !p.tally_entered;
   });
@@ -786,11 +943,13 @@ function renderTally() {
   pending.forEach(bill => {
     const cat = getCategoryById(bill.category);
     const pay = state.payments[bill.id] || {};
+    const tfreq = bill.frequency || 'monthly';
+    const tbadge = tfreq !== 'monthly' ? `<span class="freq-badge ${tfreq}">${freqLabel(tfreq)}</span>` : '';
     html += `
       <div class="bill-row" style="border-color:#FDE68A">
         <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
         <div class="bill-info">
-          <div class="bill-name">${escapeHtml(bill.name)}</div>
+          <div class="bill-name">${escapeHtml(bill.name)}${tbadge}</div>
           <div class="bill-meta">${formatINR(pay.amount || bill.typical_amount)} • Paid on ${pay.paid_date || '-'}${bill.vendor ? ' • ' + escapeHtml(bill.vendor) : ''}</div>
           ${bill.notes ? `<div class="bill-meta" style="margin-top:4px;font-style:italic">${escapeHtml(bill.notes)}</div>` : ''}
         </div>
