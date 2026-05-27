@@ -44,6 +44,32 @@ input, select, textarea { font-family: inherit; }
 .header p { font-size: 11px; opacity: 0.9; margin-top: 2px; }
 .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .month-picker { padding: 8px 10px; border-radius: 8px; border: none; font-size: 14px; background: rgba(255,255,255,0.95); color: #0F172A; }
+
+/* WORKSPACE SELECTOR (in header) */
+.ws-selector { position: relative; }
+.ws-btn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.3); color: white; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.ws-btn:hover { background: rgba(255,255,255,0.28); }
+.ws-btn-icon { font-size: 18px; }
+.ws-btn-chev { font-size: 10px; opacity: 0.8; }
+.ws-menu { position: absolute; top: 110%; left: 0; min-width: 220px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid #E2E8F0; padding: 6px; z-index: 50; display: none; }
+.ws-menu.open { display: block; }
+.ws-menu-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; color: #0F172A; transition: background 0.1s; }
+.ws-menu-item:hover { background: #F8FAFC; }
+.ws-menu-item.selected { background: #ECFDF5; color: #065F46; font-weight: 700; }
+.ws-menu-item-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.ws-menu-divider { height: 1px; background: #E2E8F0; margin: 4px 6px; }
+.ws-menu-manage { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #6ebdce; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.ws-menu-manage:hover { background: #F0FDFA; }
+
+/* WORKSPACE MANAGER ROWS */
+.ws-row { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 6px; background: white; }
+.ws-row-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.ws-row-info { flex: 1; }
+.ws-row-name { font-size: 14px; font-weight: 600; }
+.ws-row-meta { font-size: 11px; color: #94A3B8; }
+.ws-action { padding: 5px 10px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 11px; font-weight: 600; cursor: pointer; }
+.ws-action.delete { color: #EF4444; }
+.ws-action.default { color: #10B981; }
 .btn-primary { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; border: none; background: white; color: #1a2e1a; font-weight: 600; font-size: 13px; }
 .btn-lock { padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.35); background: transparent; color: white; font-size: 13px; }
 
@@ -287,6 +313,7 @@ input, select, textarea { font-family: inherit; }
         <p>Payments · Tally · Due Dates <span id="syncStatus" class="sync-status"></span></p>
       </div>
       <div class="header-actions">
+        <div class="ws-selector" id="wsSelector"></div>
         <input type="month" id="monthPicker" class="month-picker">
         <button class="btn-primary" onclick="openAddBill()">+ Add Bill</button>
         <button class="btn-lock" onclick="doLock()">🔒 Lock</button>
@@ -314,6 +341,14 @@ input, select, textarea { font-family: inherit; }
       <div>
         <label class="field-label">Bill Name *</label>
         <input id="f_name" class="field-input" placeholder="e.g., HDFC Credit Card 4521">
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <label class="field-label" style="margin-bottom:0;">Workspace *</label>
+          <button type="button" onclick="openWorkspaceManager()" style="background:none;border:none;color:#6ebdce;font-size:11px;font-weight:600;cursor:pointer;">⚙ Manage</button>
+        </div>
+        <div id="f_workspace_btns" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <input type="hidden" id="f_workspace_value" value="clinic">
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
@@ -494,6 +529,64 @@ input, select, textarea { font-family: inherit; }
   </div>
 </div>
 
+<!-- WORKSPACE MANAGER MODAL -->
+<div id="wsModal" class="modal-bg" style="display:none;">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h2>Manage Workspaces</h2>
+      <button class="btn-icon" onclick="closeWorkspaceManager()">✕</button>
+    </div>
+    <div class="modal-body" id="wsModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="openAddWorkspace()" style="margin-right:auto;">➕ Add Workspace</button>
+      <button class="btn-cancel" onclick="closeWorkspaceManager()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT WORKSPACE MODAL -->
+<div id="wsEditModal" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="wsEditTitle">Add Workspace</h2>
+      <button class="btn-icon" onclick="closeWsEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <label class="field-label">Workspace Name *</label>
+        <input id="we_name" class="field-input" placeholder="e.g., Astrohomeopathy, Society">
+      </div>
+      <div>
+        <label class="field-label">Icon *</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="we_icon" class="field-input" maxlength="4" style="width:80px;font-size:24px;text-align:center;" value="📂">
+          <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1;">
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🏥')">🏥</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🏠')">🏠</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('💰')">💰</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🎓')">🎓</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🏢')">🏢</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('💼')">💼</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🏛️')">🏛️</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🚀')">🚀</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🌟')">🌟</button>
+            <button type="button" class="emoji-pick" onclick="setWsEmoji('🪷')">🪷</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Color *</label>
+        <div id="we_colors" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <input type="hidden" id="we_color" value="#6ebdce">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeWsEditModal()">Cancel</button>
+      <button class="btn-save" onclick="saveWorkspaceEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Load Supabase JS client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -528,18 +621,28 @@ const DEFAULT_CATEGORIES = [
 
 let CATEGORIES = [...DEFAULT_CATEGORIES];
 
+// Default workspaces (fallback)
+const DEFAULT_WORKSPACES = [
+  { id: 'clinic',      label: 'Clinic',      icon: '🏥', color: '#0891B2', is_default: true,  sort_order: 10 },
+  { id: 'home',        label: 'Home',        icon: '🏠', color: '#10B981', is_default: false, sort_order: 20 },
+  { id: 'investments', label: 'Investments', icon: '💰', color: '#F59E0B', is_default: false, sort_order: 30 }
+];
+let WORKSPACES = [...DEFAULT_WORKSPACES];
+
 let sb = null;
 let state = {
   bills: [],
   payments: {},
-  allPaymentsByBill: {},  // Map of billId -> array of all payment rows (across months)
+  allPaymentsByBill: {},
   activeTab: 'dashboard',
+  activeWorkspace: 'clinic',  // 'all' | <workspace_id>
   filterCategory: 'all',
-  filterPayStatus: 'all',  // 'all' | 'paid' | 'unpaid'
+  filterPayStatus: 'all',
   selectedMonth: getCurrentMonth(),
   editingBill: null,
   editingPayBillId: null,
   editingCategoryId: null,
+  editingWorkspaceId: null,
   config: null
 };
 
@@ -641,7 +744,8 @@ function monthNumFromKey(key) {
 // Get bills active in the currently-selected month (based on frequency)
 function billsForSelectedMonth() {
   const monthNum = monthNumFromKey(state.selectedMonth);
-  return state.bills.filter(b => isBillActiveInMonth(b, monthNum));
+  const wsBills = billsInActiveWorkspace();
+  return wsBills.filter(b => isBillActiveInMonth(b, monthNum));
 }
 
 // Format frequency for display
@@ -653,9 +757,200 @@ function freqLabel(freq) {
 }
 
 // ============================================================
-// CATEGORY MANAGER
+// WORKSPACE SWITCHER & MANAGER
 // ============================================================
-const CATEGORY_COLORS = ['#7C3AED','#F59E0B','#10B981','#3B82F6','#06B6D4','#EF4444','#0EA5E9','#F97316','#EC4899','#6366F1','#0891B2','#DC2626','#9333EA','#0F766E','#7C2D12','#475569','#84CC16','#DB2777','#64748B','#6ebdce','#1a2e1a'];
+const WORKSPACE_COLORS = ['#0891B2','#10B981','#F59E0B','#7C3AED','#EF4444','#EC4899','#06B6D4','#DC2626','#9333EA','#0F766E','#6366F1','#84CC16','#DB2777','#6ebdce','#1a2e1a','#475569','#F97316','#3B82F6'];
+
+// Render workspace dropdown selector in header
+function renderWorkspaceSelector() {
+  const ws = state.activeWorkspace === 'all'
+    ? { id: 'all', label: 'All Workspaces', icon: '📊', color: '#6ebdce' }
+    : getWorkspaceById(state.activeWorkspace);
+  const menuItems = WORKSPACES.map(w => `
+    <div class="ws-menu-item ${state.activeWorkspace === w.id ? 'selected' : ''}" onclick="switchWorkspace('${w.id}')">
+      <div class="ws-menu-item-icon" style="background:${w.color}20;color:${w.color};">${w.icon}</div>
+      <div style="flex:1;">${escapeHtml(w.label)} ${w.is_default ? '<span style=\"font-size:10px;color:#10B981;margin-left:6px;\">DEFAULT</span>' : ''}</div>
+    </div>
+  `).join('');
+  document.getElementById('wsSelector').innerHTML = `
+    <button class="ws-btn" onclick="toggleWorkspaceMenu(event)">
+      <span class="ws-btn-icon">${ws.icon}</span>
+      <span>${escapeHtml(ws.label)}</span>
+      <span class="ws-btn-chev">▼</span>
+    </button>
+    <div class="ws-menu" id="wsMenu">
+      ${menuItems}
+      <div class="ws-menu-item ${state.activeWorkspace === 'all' ? 'selected' : ''}" onclick="switchWorkspace('all')">
+        <div class="ws-menu-item-icon" style="background:#F1F5F9;">📊</div>
+        <div style="flex:1;">All Workspaces <span style="font-size:10px;color:#94A3B8;margin-left:6px;">(combined view)</span></div>
+      </div>
+      <div class="ws-menu-divider"></div>
+      <div class="ws-menu-manage" onclick="openWorkspaceManager()">⚙ Manage workspaces</div>
+    </div>
+  `;
+}
+
+function toggleWorkspaceMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('wsMenu');
+  menu.classList.toggle('open');
+  // Close on outside click
+  const closeHandler = (ev) => {
+    if (!ev.target.closest('#wsSelector')) {
+      menu.classList.remove('open');
+      document.removeEventListener('click', closeHandler);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeHandler), 0);
+}
+
+function switchWorkspace(wsId) {
+  state.activeWorkspace = wsId;
+  localStorage.setItem('bills_active_ws', wsId);
+  // Reset filters when switching workspace
+  state.filterCategory = 'all';
+  state.filterPayStatus = 'all';
+  document.getElementById('wsMenu').classList.remove('open');
+  render();
+}
+
+// ===== Workspace Manager =====
+function openWorkspaceManager() {
+  renderWorkspaceManagerBody();
+  document.getElementById('wsMenu')?.classList.remove('open');
+  document.getElementById('wsModal').style.display = 'flex';
+}
+function closeWorkspaceManager() {
+  document.getElementById('wsModal').style.display = 'none';
+}
+
+function renderWorkspaceManagerBody() {
+  const sorted = [...WORKSPACES].sort((a,b) => (a.sort_order || 999) - (b.sort_order || 999));
+  let html = `<div style="font-size:12px;color:#64748B;margin-bottom:10px;">Each bill belongs to one workspace. Switch in header to see only that workspace's bills.</div>`;
+  html += sorted.map(w => {
+    const billCount = state.bills.filter(b => (b.workspace_id || 'home') === w.id).length;
+    return `
+      <div class="ws-row">
+        <div class="ws-row-icon" style="background:${w.color}20;color:${w.color};">${w.icon}</div>
+        <div class="ws-row-info">
+          <div class="ws-row-name">${escapeHtml(w.label)}</div>
+          <div class="ws-row-meta">
+            ${billCount} bill${billCount !== 1 ? 's' : ''} ${w.is_default ? '• 🌟 Default' : ''}
+          </div>
+        </div>
+        ${!w.is_default ? `<button class="ws-action default" onclick="setDefaultWorkspace('${w.id}')">Set Default</button>` : ''}
+        <button class="ws-action" onclick="editWorkspace('${w.id}')">Edit</button>
+        ${WORKSPACES.length > 1 ? `<button class="ws-action delete" onclick="deleteWorkspaceConfirm('${w.id}', '${escapeHtml(w.label)}')">Delete</button>` : ''}
+      </div>`;
+  }).join('');
+  document.getElementById('wsModalBody').innerHTML = html;
+}
+
+async function setDefaultWorkspace(wsId) {
+  // Clear is_default on all, then set on target
+  for (const w of WORKSPACES) {
+    if (w.is_default && w.id !== wsId) {
+      await sb.from('workspaces').update({ is_default: false }).eq('id', w.id);
+    }
+  }
+  const target = WORKSPACES.find(w => w.id === wsId);
+  if (target) {
+    await upsertWorkspace({ ...target, is_default: true });
+    renderWorkspaceManagerBody();
+  }
+}
+
+async function deleteWorkspaceConfirm(wsId, label) {
+  const inUse = state.bills.filter(b => (b.workspace_id || 'home') === wsId).length;
+  if (inUse > 0) {
+    alert(`Cannot delete "${label}" — ${inUse} bill(s) still use this workspace. Reassign or delete those bills first.`);
+    return;
+  }
+  if (!confirm(`Delete workspace "${label}" permanently?`)) return;
+  const ok = await deleteWorkspaceById(wsId);
+  if (ok) {
+    // If active workspace was deleted, switch to default
+    if (state.activeWorkspace === wsId) {
+      const def = WORKSPACES.find(w => w.is_default) || WORKSPACES[0];
+      state.activeWorkspace = def ? def.id : 'home';
+      localStorage.setItem('bills_active_ws', state.activeWorkspace);
+    }
+    renderWorkspaceManagerBody();
+    render();
+  }
+}
+
+// ===== Add/Edit Workspace =====
+function openAddWorkspace() {
+  state.editingWorkspaceId = null;
+  document.getElementById('wsEditTitle').textContent = 'Add Workspace';
+  document.getElementById('we_name').value = '';
+  document.getElementById('we_icon').value = '📂';
+  setWsColor('#6ebdce');
+  renderWsColorSwatches();
+  document.getElementById('wsEditModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('we_name').focus(), 100);
+}
+
+function editWorkspace(wsId) {
+  const w = WORKSPACES.find(x => x.id === wsId);
+  if (!w) return;
+  state.editingWorkspaceId = wsId;
+  document.getElementById('wsEditTitle').textContent = 'Edit Workspace';
+  document.getElementById('we_name').value = w.label;
+  document.getElementById('we_icon').value = w.icon;
+  setWsColor(w.color);
+  renderWsColorSwatches();
+  document.getElementById('wsEditModal').style.display = 'flex';
+}
+
+function closeWsEditModal() {
+  document.getElementById('wsEditModal').style.display = 'none';
+  state.editingWorkspaceId = null;
+}
+
+function setWsEmoji(emoji) { document.getElementById('we_icon').value = emoji; }
+function setWsColor(hex) {
+  document.getElementById('we_color').value = hex;
+  document.querySelectorAll('#we_colors .color-pick').forEach(p => p.classList.toggle('selected', p.dataset.color === hex));
+}
+function renderWsColorSwatches() {
+  document.getElementById('we_colors').innerHTML = WORKSPACE_COLORS.map(c =>
+    `<button type="button" class="color-pick ${document.getElementById('we_color').value === c ? 'selected' : ''}" data-color="${c}" style="background:${c}" onclick="setWsColor('${c}')"></button>`
+  ).join('');
+}
+
+async function saveWorkspaceEdit() {
+  const name = document.getElementById('we_name').value.trim();
+  const icon = document.getElementById('we_icon').value.trim() || '📂';
+  const color = document.getElementById('we_color').value || '#6ebdce';
+  if (!name) { alert('Workspace name is required'); return; }
+
+  if (state.editingWorkspaceId) {
+    // Edit existing
+    const w = WORKSPACES.find(x => x.id === state.editingWorkspaceId);
+    if (!w) return;
+    const ok = await upsertWorkspace({ ...w, label: name, icon: icon, color: color });
+    if (ok) { closeWsEditModal(); renderWorkspaceManagerBody(); render(); }
+  } else {
+    // Add new — generate clean id
+    const baseId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30);
+    if (!baseId) { alert('Please enter a valid name'); return; }
+    if (WORKSPACES.some(w => w.id === baseId)) { alert('A workspace with this name already exists.'); return; }
+    const maxOrder = Math.max(0, ...WORKSPACES.map(w => w.sort_order || 0));
+    const ok = await upsertWorkspace({
+      id: baseId,
+      label: name,
+      icon: icon,
+      color: color,
+      is_default: false,
+      sort_order: maxOrder + 10
+    });
+    if (ok) { closeWsEditModal(); renderWorkspaceManagerBody(); render(); }
+  }
+}
+
+
 
 function openCategoryManager() {
   renderCategoryManagerBody();
@@ -928,10 +1223,65 @@ async function loadAllPayments() {
 }
 
 async function loadData() {
-  await Promise.all([loadCategories(), loadBills(), loadPayments(), loadAllPayments()]);
+  await Promise.all([loadWorkspaces(), loadCategories(), loadBills(), loadPayments(), loadAllPayments()]);
   setSync('Synced ✓');
   setTimeout(() => setSync(''), 2000);
   render();
+}
+
+// Load workspaces from Supabase. Falls back to defaults if table missing.
+async function loadWorkspaces() {
+  try {
+    const { data, error } = await sb.from('workspaces').select('*').order('sort_order', { ascending: true });
+    if (error || !data || data.length === 0) {
+      console.warn('Falling back to default workspaces:', error);
+      WORKSPACES = [...DEFAULT_WORKSPACES];
+    } else {
+      WORKSPACES = data;
+    }
+    // If saved active workspace isn't in list, fall back to default
+    const savedWs = localStorage.getItem('bills_active_ws');
+    if (savedWs && (savedWs === 'all' || WORKSPACES.some(w => w.id === savedWs))) {
+      state.activeWorkspace = savedWs;
+    } else {
+      const def = WORKSPACES.find(w => w.is_default);
+      state.activeWorkspace = def ? def.id : (WORKSPACES[0] ? WORKSPACES[0].id : 'home');
+    }
+  } catch (e) {
+    console.warn('loadWorkspaces failed, using defaults:', e);
+    WORKSPACES = [...DEFAULT_WORKSPACES];
+    state.activeWorkspace = 'clinic';
+  }
+}
+
+function getWorkspaceById(id) {
+  return WORKSPACES.find(w => w.id === id) || { id: 'home', label: 'Home', icon: '🏠', color: '#10B981' };
+}
+
+async function upsertWorkspace(ws) {
+  setSync('Saving workspace...', 'syncing');
+  const { error } = await sb.from('workspaces').upsert(ws);
+  if (error) { setSync('Save failed', 'error'); alert('Failed: ' + error.message); return false; }
+  await loadWorkspaces();
+  setSync('Synced ✓');
+  setTimeout(() => setSync(''), 1200);
+  return true;
+}
+
+async function deleteWorkspaceById(wsId) {
+  setSync('Deleting...', 'syncing');
+  const { error } = await sb.from('workspaces').delete().eq('id', wsId);
+  if (error) { setSync('Delete failed', 'error'); alert('Failed: ' + error.message); return false; }
+  await loadWorkspaces();
+  setSync('Synced ✓');
+  setTimeout(() => setSync(''), 1200);
+  return true;
+}
+
+// Filter bills by active workspace ('all' = all workspaces)
+function billsInActiveWorkspace() {
+  if (state.activeWorkspace === 'all') return state.bills;
+  return state.bills.filter(b => (b.workspace_id || 'home') === state.activeWorkspace);
 }
 
 // Load categories from Supabase. Falls back to DEFAULT_CATEGORIES if table missing.
@@ -1024,6 +1374,11 @@ function openAddBill() {
   document.getElementById('modalTitle').textContent = 'Add New Bill';
   ['f_name','f_vendor','f_amount','f_notes'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f_dueDay').value = '1';
+  // Set default workspace = current active workspace (or first available if "all")
+  const wsId = (state.activeWorkspace !== 'all' && WORKSPACES.some(w => w.id === state.activeWorkspace))
+    ? state.activeWorkspace
+    : (WORKSPACES.find(w => w.is_default) || WORKSPACES[0] || {id:'clinic'}).id;
+  renderWorkspacePicker(wsId);
   // Set default category to first visible
   const first = visibleCategories()[0] || CATEGORIES[0];
   renderCategoryPicker(first ? first.id : 'other');
@@ -1042,6 +1397,7 @@ function openEditBill(bill) {
   document.getElementById('f_dueDay').value = bill.due_day;
   document.getElementById('f_amount').value = bill.typical_amount;
   document.getElementById('f_notes').value = bill.notes || '';
+  renderWorkspacePicker(bill.workspace_id || 'home');
   renderCategoryPicker(bill.category);
   document.getElementById('f_frequency').value = bill.frequency || 'monthly';
   let am = bill.active_months;
@@ -1053,6 +1409,24 @@ function openEditBill(bill) {
 }
 
 // Render pinned category buttons + dropdown for unpinned/all
+// Render workspace picker buttons in Add/Edit Bill form
+function renderWorkspacePicker(selectedId) {
+  const html = WORKSPACES.map(w =>
+    `<button type="button" class="cat-btn ${selectedId === w.id ? 'selected' : ''}" data-ws="${w.id}" onclick="selectWorkspaceForBill('${w.id}')">
+      <span class="cat-btn-icon">${w.icon}</span><span>${escapeHtml(w.label)}</span>
+    </button>`
+  ).join('');
+  document.getElementById('f_workspace_btns').innerHTML = html;
+  document.getElementById('f_workspace_value').value = selectedId;
+}
+
+function selectWorkspaceForBill(wsId) {
+  document.getElementById('f_workspace_value').value = wsId;
+  document.querySelectorAll('#f_workspace_btns .cat-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.ws === wsId);
+  });
+}
+
 function renderCategoryPicker(selectedId) {
   const pinned = pinnedCategories();
   const others = unpinnedVisibleCategories();
@@ -1152,6 +1526,7 @@ async function saveBill() {
   const ok = await saveBillRecord({
     name,
     category: document.getElementById('f_category_value').value || 'other',
+    workspace_id: document.getElementById('f_workspace_value').value || 'home',
     vendor: document.getElementById('f_vendor').value.trim() || null,
     due_day: parseInt(document.getElementById('f_dueDay').value) || 1,
     typical_amount: parseFloat(document.getElementById('f_amount').value) || 0,
@@ -1321,12 +1696,13 @@ function clearFilters() {
 }
 
 function exportCSV() {
-  const rows = [['Bill Name','Category','Frequency','Vendor','Due Day','Amount','Paid','Paid Date','Payment Mode','Reference No.','Payment Note','Tally Entered','Bill Notes']];
+  const rows = [['Workspace','Bill Name','Category','Frequency','Vendor','Due Day','Amount','Paid','Paid Date','Payment Mode','Reference No.','Payment Note','Tally Entered','Bill Notes']];
   billsForSelectedMonth().forEach(b => {
     const p = state.payments[b.id] || {};
     const cat = getCategoryById(b.category);
+    const ws = getWorkspaceById(b.workspace_id || 'home');
     rows.push([
-      b.name, cat.label, (b.frequency || 'monthly'),
+      ws.label, b.name, cat.label, (b.frequency || 'monthly'),
       b.vendor || '', b.due_day,
       p.amount || b.typical_amount || 0,
       p.is_paid ? 'Yes' : 'No', p.paid_date || '',
@@ -1340,7 +1716,8 @@ function exportCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `bills_${state.selectedMonth}.csv`;
+  const wsTag = state.activeWorkspace === 'all' ? 'all' : state.activeWorkspace;
+  a.download = `bills_${wsTag}_${state.selectedMonth}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1349,6 +1726,7 @@ function exportCSV() {
 // RENDER
 // ============================================================
 function render() {
+  renderWorkspaceSelector();
   renderTabs();
   const main = document.getElementById('mainContent');
   if (state.activeTab === 'dashboard') main.innerHTML = renderDashboard();
@@ -1401,12 +1779,25 @@ function renderDashboard() {
   const remaining = totals.due - totals.paid;
   const unpaidCount = activeBills.length - totals.paidCount;
 
+  // Workspace context banner
+  const wsInfo = state.activeWorkspace === 'all'
+    ? { icon: '📊', label: 'All Workspaces', color: '#6ebdce', sub: `Combined view · ${WORKSPACES.length} workspaces` }
+    : { ...getWorkspaceById(state.activeWorkspace), sub: 'Viewing this workspace only' };
+
   let html = `
+    <div style="background:linear-gradient(135deg, ${wsInfo.color}15, ${wsInfo.color}08); border:1.5px solid ${wsInfo.color}40; border-radius:14px; padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:14px;">
+      <div style="width:48px;height:48px;border-radius:12px;background:${wsInfo.color}25;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${wsInfo.icon}</div>
+      <div style="flex:1;">
+        <div style="font-size:16px;font-weight:700;color:#0F172A;">${escapeHtml(wsInfo.label)}</div>
+        <div style="font-size:12px;color:#64748B;font-weight:500;">${wsInfo.sub}</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;font-weight:500;">Tap 📂 in header to switch</div>
+    </div>
     <div class="stats">
       <div class="stat-card" onclick="jumpToBills('all','all')" title="View all bills">
         <div class="stat-label">Active This Month</div>
         <div class="stat-value" style="color:#6ebdce">${activeBills.length}</div>
-        <div class="stat-sub">${totals.paidCount} paid${state.bills.length !== activeBills.length ? ' • ' + state.bills.length + ' total' : ''}</div>
+        <div class="stat-sub">${totals.paidCount} paid${state.bills.length !== activeBills.length ? ' • ' + billsInActiveWorkspace().length + ' total' : ''}</div>
       </div>
       <div class="stat-card" onclick="jumpToBills('all','all')" title="View all bills">
         <div class="stat-label">Total Due</div>
@@ -1587,6 +1978,11 @@ function renderBills() {
 
     const freq = bill.frequency || 'monthly';
     const badgeHtml = freq !== 'monthly' ? `<span class="freq-badge ${freq}">${freqLabel(freq)}</span>` : '';
+    // Workspace badge — only show when viewing "All" (helps distinguish bills across workspaces)
+    const billWs = getWorkspaceById(bill.workspace_id || 'home');
+    const wsBadgeHtml = state.activeWorkspace === 'all'
+      ? `<span class="freq-badge" style="background:${billWs.color}20;color:${billWs.color};border:1px solid ${billWs.color}40;">${billWs.icon} ${escapeHtml(billWs.label)}</span>`
+      : '';
 
     // Paid details
     let paidDetailsHtml = '';
@@ -1617,7 +2013,7 @@ function renderBills() {
       <div class="bill-row ${isPaid ? 'paid' : isOverdue ? 'overdue' : ''}">
         <div class="cat-icon-lg" style="background:${cat.color}20;color:${cat.color};">${cat.icon}</div>
         <div class="bill-info">
-          <div class="bill-name">${escapeHtml(bill.name)}${badgeHtml}</div>
+          <div class="bill-name">${escapeHtml(bill.name)}${wsBadgeHtml}${badgeHtml}</div>
           <div class="bill-meta">${bill.vendor ? '🏦 ' + escapeHtml(bill.vendor) : ''}</div>
           ${recentHtml}
           ${paidDetailsHtml}
