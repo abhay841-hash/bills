@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="theme-color" content="#1a2e1a">
+<title>Bills Manager — Dr. Abhay Patil</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📊%3C/text%3E%3C/svg%3E">
+<!-- PWA: works offline-ish, can be added to home screen -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a2e1a'/%3E%3Ctext x='50' y='65' text-anchor='middle' font-size='50'%3E📊%3C/text%3E%3C/svg%3E">
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; color: #0F172A; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+
+/* CONFIG SCREEN (first-time only) */
+.config-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #1a2e1a 0%, #6ebdce 100%); }
+.config-card { background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.config-card h1 { font-size: 22px; margin-bottom: 6px; color: #1a2e1a; }
+.config-card p { color: #64748B; font-size: 14px; margin-bottom: 18px; line-height: 1.5; }
+.config-field { margin-bottom: 14px; }
+.config-field label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+.config-field input { width: 100%; padding: 10px 12px; border: 1px solid #CBD5E1; border-radius: 8px; font-size: 14px; }
+.config-help { background: #F1F5F9; padding: 10px 12px; border-radius: 8px; font-size: 12px; color: #475569; margin-top: 12px; line-height: 1.5; }
+.config-help code { background: white; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+/* LOGIN SCREEN */
+.login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #1a2e1a 0%, #6ebdce 100%); }
+.login-card { background: white; border-radius: 16px; padding: 32px 28px; width: 100%; max-width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; }
+.login-card h1 { font-size: 22px; margin-bottom: 6px; color: #1a2e1a; }
+.login-card p { color: #64748B; font-size: 13px; margin-bottom: 22px; }
+.pin-input { width: 100%; padding: 14px; border: 2px solid #E2E8F0; border-radius: 10px; font-size: 22px; text-align: center; letter-spacing: 8px; font-weight: 600; }
+.pin-input:focus { outline: none; border-color: #6ebdce; }
+.login-btn { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #1a2e1a; color: white; font-size: 15px; font-weight: 600; margin-top: 14px; }
+.login-error { color: #EF4444; font-size: 13px; margin-top: 12px; min-height: 18px; }
+.tiny-link { background: none; border: none; color: #94A3B8; font-size: 11px; margin-top: 14px; }
+
+/* HEADER */
+.header { background: linear-gradient(135deg, #1a2e1a 0%, #6ebdce 100%); color: white; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.header-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.header h1 { font-size: 19px; font-weight: 700; }
+.header p { font-size: 11px; opacity: 0.9; margin-top: 2px; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.month-picker { padding: 8px 10px; border-radius: 8px; border: none; font-size: 14px; background: rgba(255,255,255,0.95); color: #0F172A; }
+.btn-primary { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 8px; border: none; background: white; color: #1a2e1a; font-weight: 600; font-size: 13px; }
+.btn-lock { padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.35); background: transparent; color: white; font-size: 13px; }
+
+/* SYNC INDICATOR */
+.sync-status { font-size: 11px; opacity: 0.85; }
+.sync-status.syncing { color: #FCD34D; }
+.sync-status.error { color: #FCA5A5; }
+
+/* TABS */
+.tabs { background: white; border-bottom: 1px solid #E2E8F0; position: sticky; top: 0; z-index: 10; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabs-inner { max-width: 1200px; margin: 0 auto; display: flex; }
+.tab { padding: 13px 16px; border: none; background: transparent; font-size: 13px; font-weight: 600; color: #64748B; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tab.active { color: #1a2e1a; border-bottom-color: #6ebdce; }
+
+/* MAIN */
+.main { max-width: 1200px; margin: 0 auto; padding: 18px 14px 80px; }
+
+/* STATS */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.stat-card { background: white; border-radius: 12px; padding: 14px; border: 1px solid #E2E8F0; }
+.stat-label { font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+.stat-value { font-size: 21px; font-weight: 700; }
+.stat-sub { font-size: 11px; color: #64748B; margin-top: 3px; }
+
+/* ALERT */
+.alert { padding: 12px 14px; border-radius: 12px; margin-bottom: 16px; display: flex; gap: 10px; align-items: center; }
+.alert-warn { background: #FEF3C7; border: 1px solid #F59E0B; color: #78350F; }
+.alert-success { background: #D1FAE5; border: 1px solid #10B981; color: #065F46; }
+.alert-error { background: #FEE2E2; border: 1px solid #EF4444; color: #991B1B; }
+.alert strong { display: block; margin-bottom: 2px; }
+
+/* CATEGORY CARDS */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.cat-card { background: white; border-radius: 12px; padding: 12px; border: 1px solid #E2E8F0; }
+.cat-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.cat-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.cat-name { font-size: 13px; font-weight: 600; }
+.cat-amount { font-size: 17px; font-weight: 700; }
+.cat-sub { font-size: 11px; color: #64748B; }
+
+/* FILTER PILLS */
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: center; }
+.pill { padding: 6px 11px; border-radius: 18px; border: 1px solid #CBD5E1; background: white; color: #475569; font-size: 12px; font-weight: 600; }
+.pill.active { background: #1a2e1a; border-color: #1a2e1a; color: white; }
+.btn-export { margin-left: auto; padding: 7px 13px; border-radius: 8px; border: 1px solid #1a2e1a; background: white; color: #1a2e1a; font-size: 12px; font-weight: 600; }
+
+/* BILL ROWS */
+.bills-list { display: flex; flex-direction: column; gap: 8px; }
+.bill-row { background: white; border-radius: 12px; padding: 12px 14px; border: 1px solid #E2E8F0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bill-row.paid { border-color: #D1FAE5; background: #F0FDF4; }
+.bill-row.overdue { border-color: #FECACA; }
+.bill-info { flex: 1; min-width: 180px; }
+.bill-name { font-weight: 600; font-size: 14px; }
+.bill-meta { font-size: 11px; color: #64748B; margin-top: 2px; }
+.bill-amount-input { width: 95px; padding: 7px 9px; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 14px; text-align: right; }
+.btn-toggle { padding: 7px 11px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600; }
+.btn-paid { background: #10B981; color: white; }
+.btn-not-paid { background: #F1F5F9; color: #475569; }
+.btn-tally-done { background: #7C3AED; color: white; }
+.btn-tally-pending { background: #F1F5F9; color: #475569; }
+.btn-tally-pending:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-icon { padding: 6px 8px; border-radius: 6px; border: 1px solid #E2E8F0; background: white; font-size: 13px; }
+
+/* EMPTY */
+.empty { text-align: center; padding: 36px 20px; background: white; border-radius: 12px; border: 2px dashed #CBD5E1; }
+.empty-icon { font-size: 42px; margin-bottom: 8px; }
+.empty h3 { margin-bottom: 4px; font-size: 16px; }
+.empty p { color: #64748B; font-size: 13px; }
+
+/* MODAL */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100; }
+.modal { background: white; border-radius: 16px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
+.modal-header h2 { font-size: 17px; }
+.modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 13px; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid #E2E8F0; display: flex; gap: 10px; justify-content: flex-end; }
+.field-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+.field-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 14px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-cancel { padding: 10px 16px; border-radius: 8px; border: 1px solid #CBD5E1; background: white; font-weight: 600; }
+.btn-save { padding: 10px 16px; border-radius: 8px; border: none; background: #1a2e1a; color: white; font-weight: 600; }
+
+/* LOADER */
+.loader { display: flex; align-items: center; justify-content: center; padding: 40px; color: #64748B; }
+.spinner { width: 22px; height: 22px; border: 3px solid #E2E8F0; border-top-color: #6ebdce; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .header h1 { font-size: 17px; }
+  .stat-value { font-size: 19px; }
+  .bill-row { padding: 10px; }
+  .bill-amount-input { flex: 1; min-width: 80px; }
+}
+</style>
+</head>
+<body>
+
+<!-- FIRST-TIME CONFIG SCREEN -->
+<div id="configScreen" class="config-screen" style="display:none;">
+  <div class="config-card">
+    <div style="font-size:36px;margin-bottom:6px;">⚙️</div>
+    <h1>One-time Setup</h1>
+    <p>Connect this app to your Supabase database. You'll only do this once per device.</p>
+
+    <div class="config-field">
+      <label>Supabase URL</label>
+      <input id="cfg_url" placeholder="https://xxxxx.supabase.co">
+    </div>
+    <div class="config-field">
+      <label>Supabase Anon Key (public)</label>
+      <input id="cfg_key" placeholder="eyJhbGc...">
+    </div>
+    <div class="config-field">
+      <label>Set your PIN (4–6 digits)</label>
+      <input id="cfg_pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••">
+    </div>
+
+    <button class="login-btn" onclick="saveConfig()">Save & Continue</button>
+    <div id="configError" class="login-error"></div>
+
+    <div class="config-help">
+      <strong>Where do I find these?</strong><br>
+      In your Supabase project → <code>Settings</code> → <code>API</code><br>
+      • <strong>URL</strong>: copy "Project URL"<br>
+      • <strong>Anon Key</strong>: copy "Project API keys" → <code>anon public</code><br>
+      <em>Note: the anon key is safe to use in browser apps — it's designed for that.</em>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen" style="display:none;">
+  <div class="login-card">
+    <div style="font-size:42px;margin-bottom:6px;">🔐</div>
+    <h1>Bills Manager</h1>
+    <p>Enter your PIN to continue</p>
+    <input type="password" id="pinInput" class="pin-input" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="••••">
+    <button class="login-btn" onclick="doLogin()">Unlock</button>
+    <div id="loginError" class="login-error"></div>
+    <button class="tiny-link" onclick="resetConfig()">Reset connection settings</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" style="display:none;">
+  <header class="header">
+    <div class="header-inner">
+      <div>
+        <h1>📊 Monthly Bills Manager</h1>
+        <p>Payments · Tally · Due Dates <span id="syncStatus" class="sync-status"></span></p>
+      </div>
+      <div class="header-actions">
+        <input type="month" id="monthPicker" class="month-picker">
+        <button class="btn-primary" onclick="openAddBill()">+ Add Bill</button>
+        <button class="btn-lock" onclick="doLock()">🔒 Lock</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tabs-inner" id="tabsContainer"></div>
+  </div>
+
+  <main class="main" id="mainContent">
+    <div class="loader"><div class="spinner"></div>Loading your bills...</div>
+  </main>
+</div>
+
+<!-- ADD/EDIT BILL MODAL -->
+<div id="billModal" class="modal-bg" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add New Bill</h2>
+      <button class="btn-icon" onclick="closeBillModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <label class="field-label">Bill Name *</label>
+        <input id="f_name" class="field-input" placeholder="e.g., HDFC Credit Card 4521">
+      </div>
+      <div>
+        <label class="field-label">Category</label>
+        <select id="f_category" class="field-input"></select>
+      </div>
+      <div>
+        <label class="field-label">Vendor / Account (optional)</label>
+        <input id="f_vendor" class="field-input" placeholder="e.g., MSEDCL Acct 1234">
+      </div>
+      <div class="row-2">
+        <div>
+          <label class="field-label">Due Day</label>
+          <input id="f_dueDay" type="number" min="1" max="31" class="field-input" value="1">
+        </div>
+        <div>
+          <label class="field-label">Typical Amount (₹)</label>
+          <input id="f_amount" type="number" class="field-input" placeholder="0">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Notes (Tally ledger, biller URL...)</label>
+        <textarea id="f_notes" rows="2" class="field-input" placeholder="Ledger: Electricity Expense | Auto-debit HDFC Sav"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeBillModal()">Cancel</button>
+      <button class="btn-save" onclick="saveBill()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Supabase JS client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+// ============================================================
+// BILL TRACKER — NETLIFY + SUPABASE
+// ============================================================
+
+const CATEGORIES = [
+  { id: 'credit_card', label: 'Credit Card', icon: '💳', color: '#7C3AED' },
+  { id: 'electricity', label: 'Electricity', icon: '⚡', color: '#F59E0B' },
+  { id: 'property_tax', label: 'Property Tax', icon: '🏠', color: '#10B981' },
+  { id: 'telephone', label: 'Telephone / Mobile', icon: '📱', color: '#3B82F6' },
+  { id: 'internet', label: 'Internet / Broadband', icon: '🌐', color: '#06B6D4' },
+  { id: 'insurance', label: 'Insurance', icon: '🛡️', color: '#EF4444' },
+  { id: 'water', label: 'Water', icon: '💧', color: '#0EA5E9' },
+  { id: 'gas', label: 'Gas / LPG', icon: '🔥', color: '#F97316' },
+  { id: 'subscription', label: 'Subscriptions', icon: '📺', color: '#EC4899' },
+  { id: 'rent_lease', label: 'Rent / Lease', icon: '🏢', color: '#6366F1' },
+  { id: 'other', label: 'Other', icon: '📄', color: '#64748B' }
+];
+
+let supabase = null;
+let state = {
+  bills: [],
+  payments: {},
+  activeTab: 'dashboard',
+  filterCategory: 'all',
+  selectedMonth: getCurrentMonth(),
+  editingBill: null,
+  config: null
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+function getCurrentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatINR(amount) {
+  if (!amount) return '₹0';
+  return '₹' + Number(amount).toLocaleString('en-IN');
+}
+
+function getDaysUntil(dueDay) {
+  const today = new Date();
+  const currentDay = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  if (dueDay >= currentDay) return dueDay - currentDay;
+  return (daysInMonth - currentDay) + dueDay;
+}
+
+function getCategoryById(id) {
+  return CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function setSync(text, type = '') {
+  const el = document.getElementById('syncStatus');
+  if (el) {
+    el.textContent = text ? ' · ' + text : '';
+    el.className = 'sync-status ' + type;
+  }
+}
+
+// ============================================================
+// CONFIG (Supabase URL + Anon Key + PIN)
+// ============================================================
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem('bills_config_v1');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfg_url').value.trim();
+  const key = document.getElementById('cfg_key').value.trim();
+  const pin = document.getElementById('cfg_pin').value.trim();
+  const err = document.getElementById('configError');
+  err.textContent = '';
+
+  if (!url || !url.startsWith('https://')) { err.textContent = 'Supabase URL must start with https://'; return; }
+  if (!key || key.length < 30) { err.textContent = 'Anon key looks too short'; return; }
+  if (!pin || pin.length < 4) { err.textContent = 'PIN must be at least 4 digits'; return; }
+
+  const config = { url, key, pinHash: hashPin(pin) };
+  localStorage.setItem('bills_config_v1', JSON.stringify(config));
+  state.config = config;
+  document.getElementById('configScreen').style.display = 'none';
+  showLogin();
+}
+
+function resetConfig() {
+  if (!confirm('Reset connection settings? Your data in Supabase stays safe — you just need to reconnect this device.')) return;
+  localStorage.removeItem('bills_config_v1');
+  sessionStorage.removeItem('bills_authed');
+  location.reload();
+}
+
+// Simple PIN hash (not security-grade, but prevents casual peeking)
+function hashPin(pin) {
+  let h = 0;
+  const salt = 'ah_bills_2026_';
+  const str = salt + pin;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return String(h);
+}
+
+// ============================================================
+// AUTH (PIN check)
+// ============================================================
+function showConfig() {
+  document.getElementById('configScreen').style.display = 'flex';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'none';
+}
+
+function showLogin() {
+  document.getElementById('configScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
+  setTimeout(() => document.getElementById('pinInput').focus(), 100);
+}
+
+function showApp() {
+  document.getElementById('configScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  initApp();
+}
+
+function doLogin() {
+  const pin = document.getElementById('pinInput').value;
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  if (!pin) { err.textContent = 'Enter your PIN'; return; }
+  if (hashPin(pin) === state.config.pinHash) {
+    sessionStorage.setItem('bills_authed', '1');
+    showApp();
+  } else {
+    err.textContent = 'Wrong PIN';
+    document.getElementById('pinInput').value = '';
+    setTimeout(() => document.getElementById('pinInput').focus(), 100);
+  }
+}
+
+function doLock() {
+  sessionStorage.removeItem('bills_authed');
+  showLogin();
+}
+
+// ============================================================
+// SUPABASE DATA OPERATIONS
+// ============================================================
+function initSupabase() {
+  if (!state.config) return false;
+  supabase = window.supabase.createClient(state.config.url, state.config.key);
+  return true;
+}
+
+async function loadBills() {
+  setSync('Loading...', 'syncing');
+  const { data, error } = await supabase
+    .from('bills')
+    .select('*')
+    .eq('is_active', true)
+    .order('category', { ascending: true })
+    .order('due_day', { ascending: true });
+  if (error) { setSync('Sync error', 'error'); console.error(error); return; }
+  state.bills = data || [];
+}
+
+async function loadPayments() {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('month_key', state.selectedMonth);
+  if (error) { setSync('Sync error', 'error'); console.error(error); return; }
+  state.payments = {};
+  (data || []).forEach(p => { state.payments[p.bill_id] = p; });
+}
+
+async function loadData() {
+  await Promise.all([loadBills(), loadPayments()]);
+  setSync('Synced ✓');
+  setTimeout(() => setSync(''), 2000);
+  render();
+}
+
+async function saveBillRecord(billData) {
+  setSync('Saving...', 'syncing');
+  let res;
+  if (state.editingBill) {
+    res = await supabase.from('bills').update(billData).eq('id', state.editingBill.id);
+  } else {
+    res = await supabase.from('bills').insert(billData);
+  }
+  if (res.error) { setSync('Save failed', 'error'); alert('Save failed: ' + res.error.message); return false; }
+  await loadData();
+  return true;
+}
+
+async function deleteBillRecord(id) {
+  if (!confirm('Delete this bill? Past payments will be kept in records.')) return;
+  setSync('Deleting...', 'syncing');
+  const { error } = await supabase.from('bills').update({ is_active: false }).eq('id', id);
+  if (error) { setSync('Delete failed', 'error'); return; }
+  await loadData();
+}
+
+async function upsertPayment(billId, fields) {
+  setSync('Saving...', 'syncing');
+  const existing = state.payments[billId];
+  if (existing) {
+    const { error } = await supabase.from('payments').update(fields).eq('id', existing.id);
+    if (error) { setSync('Save failed', 'error'); console.error(error); return; }
+  } else {
+    const { error } = await supabase.from('payments').insert({
+      bill_id: billId,
+      month_key: state.selectedMonth,
+      ...fields
+    });
+    if (error) { setSync('Save failed', 'error'); console.error(error); return; }
+  }
+  await loadPayments();
+  setSync('Synced ✓');
+  setTimeout(() => setSync(''), 1500);
+  render();
+}
+
+// ============================================================
+// UI ACTIONS
+// ============================================================
+function openAddBill() {
+  state.editingBill = null;
+  document.getElementById('modalTitle').textContent = 'Add New Bill';
+  ['f_name','f_vendor','f_amount','f_notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_dueDay').value = '1';
+  document.getElementById('f_category').value = 'credit_card';
+  document.getElementById('billModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('f_name').focus(), 100);
+}
+
+function openEditBill(bill) {
+  state.editingBill = bill;
+  document.getElementById('modalTitle').textContent = 'Edit Bill';
+  document.getElementById('f_name').value = bill.name;
+  document.getElementById('f_vendor').value = bill.vendor || '';
+  document.getElementById('f_dueDay').value = bill.due_day;
+  document.getElementById('f_amount').value = bill.typical_amount;
+  document.getElementById('f_notes').value = bill.notes || '';
+  document.getElementById('f_category').value = bill.category;
+  document.getElementById('billModal').style.display = 'flex';
+}
+
+function closeBillModal() {
+  document.getElementById('billModal').style.display = 'none';
+  state.editingBill = null;
+}
+
+async function saveBill() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('Bill name is required'); return; }
+  const ok = await saveBillRecord({
+    name,
+    category: document.getElementById('f_category').value,
+    vendor: document.getElementById('f_vendor').value.trim() || null,
+    due_day: parseInt(document.getElementById('f_dueDay').value) || 1,
+    typical_amount: parseFloat(document.getElementById('f_amount').value) || 0,
+    notes: document.getElementById('f_notes').value.trim() || null
+  });
+  if (ok) closeBillModal();
+}
+
+async function togglePaid(billId) {
+  const pay = state.payments[billId] || {};
+  const bill = state.bills.find(b => b.id == billId);
+  const willBePaid = !pay.is_paid;
+  await upsertPayment(billId, {
+    is_paid: willBePaid,
+    paid_date: willBePaid ? new Date().toISOString().split('T')[0] : null,
+    amount: pay.amount || bill.typical_amount || 0
+  });
+}
+
+async function toggleTally(billId) {
+  const pay = state.payments[billId] || {};
+  if (!pay.is_paid) return;
+  await upsertPayment(billId, {
+    tally_entered: !pay.tally_entered,
+    tally_entered_date: !pay.tally_entered ? new Date().toISOString().split('T')[0] : null
+  });
+}
+
+async function updateAmount(billId, value) {
+  await upsertPayment(billId, { amount: parseFloat(value) || 0 });
+}
+
+function setTab(tab) { state.activeTab = tab; render(); }
+function setFilter(cat) { state.filterCategory = cat; render(); }
+
+function exportCSV() {
+  const rows = [['Bill Name','Category','Vendor','Due Day','Amount','Paid','Paid Date','Tally Entered','Notes']];
+  state.bills.forEach(b => {
+    const p = state.payments[b.id] || {};
+    const cat = getCategoryById(b.category);
+    rows.push([
+      b.name, cat.label, b.vendor || '', b.due_day,
+      p.amount || b.typical_amount || 0,
+      p.is_paid ? 'Yes' : 'No', p.paid_date || '',
+      p.tally_entered ? 'Yes' : 'No', b.notes || ''
+    ]);
+  });
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bills_${state.selectedMonth}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  renderTabs();
+  const main = document.getElementById('mainContent');
+  if (state.activeTab === 'dashboard') main.innerHTML = renderDashboard();
+  else if (state.activeTab === 'bills') main.innerHTML = renderBills();
+  else if (state.activeTab === 'upcoming') main.innerHTML = renderUpcoming();
+  else if (state.activeTab === 'tally') main.innerHTML = renderTally();
+}
+
+function renderTabs() {
+  const upcoming = countUpcoming();
+  const tallyPending = countTallyPending();
+  const tabs = [
+    { id: 'dashboard', label: '📊 Dashboard' },
+    { id: 'bills', label: '📋 All Bills' },
+    { id: 'upcoming', label: `⏰ Upcoming (${upcoming})` },
+    { id: 'tally', label: `✓ Tally Pending (${tallyPending})` }
+  ];
+  document.getElementById('tabsContainer').innerHTML = tabs.map(t =>
+    `<button class="tab ${state.activeTab === t.id ? 'active' : ''}" onclick="setTab('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function countUpcoming() {
+  if (state.selectedMonth !== getCurrentMonth()) return 0;
+  return state.bills.filter(b => {
+    const p = state.payments[b.id] || {};
+    if (p.is_paid) return false;
+    return getDaysUntil(b.due_day) <= 7;
+  }).length;
+}
+
+function countTallyPending() {
+  return state.bills.filter(b => {
+    const p = state.payments[b.id] || {};
+    return p.is_paid && !p.tally_entered;
+  }).length;
+}
+
+function renderDashboard() {
+  const totals = state.bills.reduce((acc, b) => {
+    const p = state.payments[b.id] || {};
+    const amt = Number(p.amount || b.typical_amount || 0);
+    acc.due += amt;
+    if (p.is_paid) { acc.paid += amt; acc.paidCount++; }
+    return acc;
+  }, { due: 0, paid: 0, paidCount: 0 });
+
+  const tallyPending = countTallyPending();
+  const remaining = totals.due - totals.paid;
+
+  let html = `
+    <div class="stats">
+      <div class="stat-card"><div class="stat-label">Total Bills</div><div class="stat-value" style="color:#6ebdce">${state.bills.length}</div><div class="stat-sub">${totals.paidCount} paid</div></div>
+      <div class="stat-card"><div class="stat-label">Total Due</div><div class="stat-value" style="color:#1a2e1a">${formatINR(totals.due)}</div></div>
+      <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" style="color:#10B981">${formatINR(totals.paid)}</div></div>
+      <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${remaining > 0 ? '#EF4444' : '#10B981'}">${formatINR(remaining)}</div></div>
+    </div>`;
+
+  if (tallyPending > 0) {
+    html += `<div class="alert alert-warn">⚠️ <div><strong>${tallyPending} bill(s) paid but not entered in Tally</strong>Switch to "Tally Pending" tab to clear.</div></div>`;
+  }
+
+  if (state.bills.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">📋</div><h3>No bills yet</h3><p>Tap "+ Add Bill" to add your first one.</p></div>`;
+    return html;
+  }
+
+  html += `<h3 style="margin:18px 0 10px;font-size:15px;">Category-wise Breakdown</h3><div class="cat-grid">`;
+  CATEGORIES.forEach(cat => {
+    const catBills = state.bills.filter(b => b.category === cat.id);
+    if (catBills.length === 0) return;
+    const catTotal = catBills.reduce((s, b) => {
+      const p = state.payments[b.id] || {};
+      return s + Number(p.amount || b.typical_amount || 0);
+    }, 0);
+    const catPaid = catBills.filter(b => (state.payments[b.id] || {}).is_paid).length;
+    html += `
+      <div class="cat-card">
+        <div class="cat-card-header">
+          <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
+          <div class="cat-name">${cat.label}</div>
+        </div>
+        <div class="cat-amount" style="color:${cat.color}">${formatINR(catTotal)}</div>
+        <div class="cat-sub">${catPaid} of ${catBills.length} paid</div>
+      </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderBills() {
+  const filtered = state.filterCategory === 'all' ? state.bills : state.bills.filter(b => b.category === state.filterCategory);
+
+  let html = `<div class="pills">`;
+  html += `<button class="pill ${state.filterCategory === 'all' ? 'active' : ''}" onclick="setFilter('all')">All (${state.bills.length})</button>`;
+  CATEGORIES.forEach(cat => {
+    const count = state.bills.filter(b => b.category === cat.id).length;
+    if (count === 0) return;
+    const isActive = state.filterCategory === cat.id;
+    html += `<button class="pill ${isActive ? 'active' : ''}" style="${isActive ? `background:${cat.color};border-color:${cat.color}` : ''}" onclick="setFilter('${cat.id}')">${cat.icon} ${cat.label} (${count})</button>`;
+  });
+  html += `<button class="btn-export" onclick="exportCSV()">📥 Export CSV</button></div>`;
+
+  if (filtered.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">📋</div><h3>No bills</h3><p>Add one to get started.</p></div>`;
+    return html;
+  }
+
+  html += `<div class="bills-list">`;
+  filtered.forEach(bill => {
+    const cat = getCategoryById(bill.category);
+    const pay = state.payments[bill.id] || {};
+    const days = getDaysUntil(bill.due_day);
+    const isPaid = !!pay.is_paid;
+    const isOverdue = !isPaid && state.selectedMonth === getCurrentMonth() && new Date().getDate() > bill.due_day;
+    const dueText = state.selectedMonth === getCurrentMonth() && !isPaid
+      ? (isOverdue ? '<span style="color:#EF4444;font-weight:600">⚠ Overdue</span>'
+        : days === 0 ? '<span style="color:#F59E0B;font-weight:600">Due today</span>'
+        : `<span style="color:${days <= 3 ? '#F59E0B' : '#64748B'}">${days} days</span>`)
+      : '';
+    html += `
+      <div class="bill-row ${isPaid ? 'paid' : isOverdue ? 'overdue' : ''}">
+        <div class="cat-icon" style="background:${cat.color}20;">${cat.icon}</div>
+        <div class="bill-info">
+          <div class="bill-name">${escapeHtml(bill.name)}</div>
+          <div class="bill-meta">${bill.vendor ? escapeHtml(bill.vendor) + ' • ' : ''}Due: ${bill.due_day} ${dueText ? '• ' + dueText : ''}</div>
+        </div>
+        <input type="number" class="bill-amount-input" value="${pay.amount || bill.typical_amount || ''}" placeholder="₹" onchange="updateAmount(${bill.id}, this.value)">
+        <button class="btn-toggle ${isPaid ? 'btn-paid' : 'btn-not-paid'}" onclick="togglePaid(${bill.id})">${isPaid ? '✓ Paid' : 'Mark Paid'}</button>
+        <button class="btn-toggle ${pay.tally_entered ? 'btn-tally-done' : 'btn-tally-pending'}" onclick="toggleTally(${bill.id})" ${!isPaid ? 'disabled' : ''}>${pay.tally_entered ? '✓ Tally' : 'Tally'}</button>
+        <button class="btn-icon" onclick='openEditBill(${JSON.stringify(bill).replace(/'/g, "&#39;")})'>✏️</button>
+        <button class="btn-icon" onclick="deleteBillRecord(${bill.id})">🗑️</button>
+      </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderUpcoming() {
+  const upcoming = state.bills.filter(b => {
+    const p = state.payments[b.id] || {};
+    if (p.is_paid) return false;
+    return state.selectedMonth === getCurrentMonth() && getDaysUntil(b.due_day) <= 7;
+  }).sort((a, b) => getDaysUntil(a.due_day) - getDaysUntil(b.due_day));
+
+  if (upcoming.length === 0) {
+    return `<div class="alert alert-success">✅ <div><strong>All clear</strong>Nothing urgent in the next 7 days.</div></div>`;
+  }
+
+  let html = `<h3 style="margin-bottom:12px;font-size:15px;">Bills due in next 7 days</h3><div class="bills-list">`;
+  upcoming.forEach(bill => {
+    const cat = getCategoryById(bill.category);
+    const days = getDaysUntil(bill.due_day);
+    const color = days <= 2 ? '#EF4444' : days <= 5 ? '#F59E0B' : '#6ebdce';
+    html += `
+      <div class="bill-row" style="border-left:4px solid ${color}">
+        <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
+        <div class="bill-info">
+          <div class="bill-name">${escapeHtml(bill.name)}</div>
+          <div class="bill-meta">${formatINR(bill.typical_amount)} • Due on ${bill.due_day} • ${days === 0 ? 'Today' : `In ${days} day(s)`}</div>
+        </div>
+        <button class="btn-toggle btn-paid" onclick="togglePaid(${bill.id})">Mark Paid</button>
+      </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function renderTally() {
+  const pending = state.bills.filter(b => {
+    const p = state.payments[b.id] || {};
+    return p.is_paid && !p.tally_entered;
+  });
+
+  let html = `<h3 style="margin-bottom:5px;font-size:15px;">Paid but not in Tally</h3>
+    <p style="color:#64748B;font-size:12px;margin-bottom:14px;">Period: ${state.selectedMonth}</p>`;
+
+  if (pending.length === 0) {
+    html += `<div class="alert alert-success">✅ <div><strong>All caught up</strong>Every paid bill is entered in Tally.</div></div>`;
+    return html;
+  }
+
+  html += `<div class="bills-list">`;
+  pending.forEach(bill => {
+    const cat = getCategoryById(bill.category);
+    const pay = state.payments[bill.id] || {};
+    html += `
+      <div class="bill-row" style="border-color:#FDE68A">
+        <div class="cat-icon" style="background:${cat.color}20">${cat.icon}</div>
+        <div class="bill-info">
+          <div class="bill-name">${escapeHtml(bill.name)}</div>
+          <div class="bill-meta">${formatINR(pay.amount || bill.typical_amount)} • Paid on ${pay.paid_date || '-'}${bill.vendor ? ' • ' + escapeHtml(bill.vendor) : ''}</div>
+          ${bill.notes ? `<div class="bill-meta" style="margin-top:4px;font-style:italic">${escapeHtml(bill.notes)}</div>` : ''}
+        </div>
+        <button class="btn-toggle btn-tally-done" onclick="toggleTally(${bill.id})">Mark Tally ✓</button>
+      </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function initApp() {
+  document.getElementById('f_category').innerHTML = CATEGORIES.map(c =>
+    `<option value="${c.id}">${c.icon} ${c.label}</option>`
+  ).join('');
+
+  const mp = document.getElementById('monthPicker');
+  mp.value = state.selectedMonth;
+  mp.onchange = async (e) => {
+    state.selectedMonth = e.target.value;
+    await loadPayments();
+    render();
+  };
+
+  loadData();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pinInput').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+
+  state.config = loadConfig();
+  if (!state.config) {
+    showConfig();
+  } else {
+    if (!initSupabase()) { showConfig(); return; }
+    if (sessionStorage.getItem('bills_authed') === '1') showApp();
+    else showLogin();
+  }
+});
+</script>
+</body>
+</html>
